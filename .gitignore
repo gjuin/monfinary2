@@ -1,0 +1,13 @@
+# Environnement virtuel
+.venv/
+env/
+venv/
+
+# Fichiers temporaires Python
+__pycache__/
+*.py[cod]
+
+# Données et secrets (Très important pour Google Sheets !)
+data/
+.env
+*.json
