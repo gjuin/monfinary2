@@ -11,3 +11,8 @@ __pycache__/
 data/
 .env
 *.json
+
+# Secrets Streamlit
+.streamlit/
+secrets.toml
+secrets.json
