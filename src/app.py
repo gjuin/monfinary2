@@ -5,7 +5,7 @@ import pandas as pd
 # Configuration de la page (important pour le look mobile)
 st.set_page_config(page_title="Mon Finary", layout="centered")
 
-st.title("📊 Mon Finary")
+st.title("📊 Mon app")
 
 # Connexion sécurisée à Google Sheets
 try:
@@ -20,7 +20,7 @@ try:
 
     # Affichage
     if not df.empty:
-        st.subheader("Aperçu de mes actifs")
+        st.subheader("Aperçu ")
         st.dataframe(df, use_container_width=True)
         
         # Exemple de graphique si tu as des colonnes 'Date' et 'Valeur'
