@@ -24,7 +24,7 @@ def get_all_data():
         value_name='Valeur'
     )
     
-    df_long_vers = df_valo.melt(
+    df_long_vers = df_vers.melt(
         id_vars=['Produit', 'Portefeuille', 'Plateforme'], 
         var_name='Date', 
         value_name='Versement'
@@ -32,10 +32,12 @@ def get_all_data():
 
     # Nettoyage des dates
     df_long_valo['Date'] = pd.to_datetime(df_long_valo['Date'], dayfirst=True, errors='coerce')
-    df_long_valo = df_long_valo[df_long_valo['Date'] <  pd.Timestamp.now()]
+    df_long_valo['Date'] = df_long_valo['Date'].dt.date # convertir en date pure yyyy-mm-dd
+    df_long_valo = df_long_valo[df_long_valo['Date'] <  pd.Timestamp.now().date()]
 
     df_long_vers['Date'] = pd.to_datetime(df_long_vers['Date'], dayfirst=True, errors='coerce')
-    df_long_vers = df_long_vers[df_long_vers['Date'] <  pd.Timestamp.now()]
+    df_long_vers['Date'] = df_long_vers['Date'].dt.date # convertir en date pure yyyy-mm-dd
+    df_long_vers = df_long_vers[df_long_vers['Date'] <  pd.Timestamp.now().date()]
 
     # On retire les espaces dans les nombres et on convertit en numérique
     df_long_valo['Valeur'] = (
@@ -55,18 +57,43 @@ def get_all_data():
     df_long_vers['Versement'] = pd.to_numeric(df_long_vers['Versement'], errors='coerce').fillna(0)
 
     # Nettoyage du pourcentage (ex: "75%" -> 0.75)
-    df_map['Pourcentage'] = df_map['Pourcentage'].str.rstrip('%').astype(float) / 100
+    df_map['Pourcentage'] = (
+    df_map['Pourcentage']
+    .astype(str)                  # Force en texte pour pouvoir utiliser .str
+    .str.replace('%', '')         # Enlève le signe %
+    .str.replace(',', '.')        # Remplace virgule par point (format FR)
+    )
+    df_map['Pourcentage'] = pd.to_numeric(df_map['Pourcentage'], errors='coerce').fillna(0)
 
     return df_long_valo, df_long_vers, df_map
 
 # 3. Récupération des données
 df_valo, df_vers, df_map = get_all_data()
 
-# 4. Interface et Graphique
+# 4. Création de l'UI
+# sélection des dates
+liste_dates_obj = sorted(df_valo['Date'].unique()) 
+liste_dates_str = [d.strftime('%d/%m/%Y') for d in liste_dates_obj] # conversion en string
+
+# Création d'une barre latérale de contrôle
+st.sidebar.header("⚙️ Paramètres")
+
+# création d'un slider sur le côté
+date_selectionnee_fmt = st.sidebar.select_slider(
+    "Faites glisser pour changer de date :",
+    options=liste_dates_str,
+    value=liste_dates_str[-1] # Par défaut, on se place sur la date la plus récente (à droite)
+)
+
+date_cible = pd.to_datetime(date_selectionnee_fmt, dayfirst=True).date()
+
+# 5. Interface et Graphique
 #### Synthese 1 ###
-df_plot = df_valo.groupby(['Date', 'Portefeuille'])['Valeur'].sum().reset_index()
+df_plot = df_valo[df_valo['Date'] <= date_cible] # filtrage dynamique
+
+df_plot = df_plot.groupby(['Date', 'Portefeuille'])['Valeur'].sum().reset_index()
 df_plot = df_plot.sort_values('Date') # ordre chrono
-df_plot['Date'] = df_plot['Date'].dt.strftime('%d/%m/%Y') # conversion en charactères
+df_plot['Date_Labels'] = pd.to_datetime(df_plot['Date']).dt.strftime('%d/%m/%Y') # reconversion date python puis en charactères
 
 ordre_portefeuille = ["Livret A", 
                       "LDDS", 
@@ -79,7 +106,7 @@ ordre_portefeuille = ["Livret A",
                       "CTO",
                       "Wallet"]
 
-couleurs_perso = {
+couleurs_portefeuille = {
     "Livret A": "#b6d7a8", 
     "LDDS": "#93c47d", 
     "Livret Bourso +": "#6aa84f",
@@ -94,19 +121,21 @@ couleurs_perso = {
 
 synthese_1 = px.bar(
     df_plot, 
-    x="Date", 
+    x="Date_Labels", 
     y="Valeur", 
     color="Portefeuille",
     title="<b>Mon épargne</b>",
     category_orders={"Portefeuille": ordre_portefeuille}, 
-    color_discrete_map = couleurs_perso,
+    color_discrete_map = couleurs_portefeuille,
     template="plotly_white"
 )
 
 synthese_1.update_xaxes(type='category',title="", showgrid=False, tickangle=-40) # Rend les distances égales entre barres
 synthese_1.update_layout(
     bargap=0.3, # Élargit les barres (0 = collées, 1 = vide total)
-    yaxis=dict(title="", showgrid=False, side="right", gridcolor="#f0f0f0",tickformat=",",ticksuffix=" €"),
+    yaxis=dict(
+        range=[0, df_valo.groupby('Date')['Valeur'].sum().max() * 1.1], # Fixe le max à +10% du record historique
+        title="", showgrid=False, side="right",tickformat=",",ticksuffix=" €"),
     separators=", ", # Définit l'espace comme séparateur de milliers
     #xaxis=dict(title="", showgrid=False, tickangle=-40),
     legend=dict(
@@ -122,46 +151,81 @@ synthese_1.update_traces(
     hovertemplate="<b>%{fullData.name}</b> : %{y:,.0f} €<extra></extra>"
 )
 
-st.plotly_chart(synthese_1, use_container_width=True)
+### Synthese 2 ### 
+# Création de l'anneau
+couleurs_classe_actifs = {
+    "Action": "#ea4335",
+    "Obligation": "#4285f4",
+    "Cash": "#34a853",
+    "Or": "#fbbc04",
+    "Crypto": "#ff9900",
+    "Métaux": "#f1caad",
+    "Divers": "#8e7cc3"
+}
 
-### Synthese 2 ### (to be continued)
-# --- 2. Préparation des données pour l'anneau (dernière date connue) ---
-# On prend la valo la plus récente
-derniere_date = df_valo['Date'].max()
-df_recent = df_valo[df_valo['Date'] == derniere_date]
+ordre_actifs = ["Action", "Obligation","Cash", "Or", "Crypto", "Métaux", "Divers"]
 
-# Merger avec le mapping (Filtre sur Dimension == "Classe d'actif")
-df_alloc = pd.merge(df_recent, df_map[df_map['Dimension'] == "Classe d'actif"], on="Produit")
+# data_valo filtrée uniquement sur date_cible
+df_now = df_valo[df_valo['Date'] == date_cible]
 
-# Calcul de la valeur pondérée : Valeur totale du produit * % d'allocation de la ligne
-df_alloc['Valeur_Ponderee'] = df_alloc['Valeur'] * df_alloc['Pourcentage']
-
-# --- 3. Création du graphique Sunburst ---
-synthese_2 = px.sunburst(
-    df_alloc,
-    path=['Sous-Catégorie', 'Produit'], # Hiérarchie : Classe d'actif -> Produit
-    values='Valeur_Ponderee',
-    title=f"<b>Répartition au {derniere_date.strftime('%d/%m/%Y')}</b>",
-    color='Sous-Catégorie',
-    color_discrete_map={
-        "Action": "#cc0000",
-        "Obligation": "#c27ba0",
-        "Cash": "#6aa84f",
-        "Immo": "#38761d",
-        "Crypto": "#ff9900"
-    },
-    template="plotly_white"
+# Merge avec le mapping (Dimension Classe d'actif)
+df_alloc = pd.merge(
+    df_now, 
+    df_map[df_map['Dimension'] == "Classe d'actif"], 
+    on="Produit"
 )
 
-# --- 4. Cosmétique ---
+df_alloc['Valeur_Ponderee'] = df_alloc['Valeur'] * df_alloc['Pourcentage']
+
+# somme par la sous catégorie "Classe d'actif"
+df_donut = df_alloc.groupby('Sous-Catégorie')['Valeur_Ponderee'].sum().reset_index()
+
+synthese_2 = px.pie(
+    df_donut, 
+    names='Sous-Catégorie', 
+    values='Valeur_Ponderee',
+    hole=0.5, # C'est ce paramètre qui transforme le camembert en anneau
+    color='Sous-Catégorie',
+    color_discrete_map= couleurs_classe_actifs,
+    category_orders={"Sous-Catégorie": ordre_actifs},
+    title=f"<b>Mon allocation au {date_selectionnee_fmt}</b>"
+)
+
 synthese_2.update_traces(
-    textinfo="label+percent entry",
-    hovertemplate="<b>%{label}</b><br>Valeur : %{value:,.0f} €"
+    textinfo='percent+label',
+    textposition='outside',
+    rotation=45,
+    hovertemplate="<b>%{label}</b><br> %{value:,.0f} €<extra></extra>"
 )
 
 synthese_2.update_layout(
-    margin=dict(t=80, l=0, r=0, b=0),
-    separators=", "
+    separators=", ",
+    showlegend=False,
+    legend=dict(orientation="v", 
+        yanchor="top", y=0.8, 
+        xanchor="right", x=-0.05),
+    margin=dict(l=50, r=50, t=80, b=80),
+    height=500
 )
 
-st.plotly_chart(synthese_2, use_container_width=True)
+### KPIs en haut ###
+total_patrimoine = df_now['Valeur'].sum() # kpi total patrimoine
+
+### 6. Layout des graphique et KPI
+# Agencement du centre
+st.markdown(
+    f"""
+    <div style="padding-left: 5px; margin-bottom: 20px;">
+        <span style="color: gray; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px;">Patrimoine total au {date_selectionnee_fmt} :</span>
+        <span style="color: #666666; font-size: 1.1em; font-weight: 500; margin-left: 10px;">{total_patrimoine:,.0f} €</span>
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
+
+col1, col2 = st.columns([1.5, 1.1]) 
+
+with col1:
+    st.plotly_chart(synthese_1, use_container_width=True)
+with col2:
+    st.plotly_chart(synthese_2, use_container_width=True)
