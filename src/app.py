@@ -12,31 +12,80 @@ st.set_page_config(layout="wide")
 # style CSS pour compacter la sidebar
 st.markdown("""
     <style>
-    /* 1. Réduire l'espace entre TOUS les widgets de la sidebar */
+    /* 1. Espace global entre widgets */
     [data-testid="stSidebarUserContent"] div.stElementContainer {
-        margin-bottom: -10px !important;
+        margin-bottom: -12px !important;
     }
 
-    /* 2. Réduire l'espace spécifique des cases à cocher */
+    /* 2. TEXTE DU SLIDER DATE ("Faites glisser...") */
+    [data-testid="stWidgetLabel"] p, 
+    [data-testid="stSlider"] label {
+        font-size: 13px !important;
+        line-height: 1.2 !important;
+    }
+
+    /* 3. CASES À COCHER (Portefeuilles) */
     [data-testid="stCheckbox"] {
-        margin-bottom: -10px !important;
+        margin-bottom: -5px !important;  /* On réduit moins agressivement ici */
+        padding-top: 2px !important;
     }
-
-    /* 3. Réduire la police des noms de portefeuilles */
     [data-testid="stCheckbox"] label p {
         font-size: 13px !important;
+        line-height: 1.4 !important; /* Ajoute un peu d'espace entre le texte et la case */
+    }
+    
+    /* 4. TEXTE DU SELECTBOX (Dimensions d'allocation) */
+    [data-testid="stSelectbox"] label p,
+    [data-testid="stSelectbox"] div[data-testid="stMarkdownContainer"] p {
+        font-size: 13px !important;
+    }
+    /* Taille du texte à l'intérieur du menu déroulant une fois sélectionné */
+    [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+        font-size: 13px !important;
+        padding-top: 2px !important;
+        padding-bottom: 2px !important;
+        min-height: 30px !important;
     }
 
-    /* 4. Compacter les dividers (lignes horizontales) */
+    /* 5. Dividers compacts */
     [data-testid="stSidebarUserContent"] hr {
-        margin-top: 15px !important;
-        margin-bottom: 15px !important;
+        margin-top: 12px !important;
+        margin-bottom: 12px !important;
     }
 
-    /* 5. Supprimer les marges inutiles en haut de la sidebar */
-    [data-testid="stSidebarUserContent"] {
-        padding-top: 0.5rem !important;
+    /* 6. REMONTÉE SYNCHRONISÉE SIDEBAR & CONTENU */
+    
+    /* On applique la même marge négative aux deux blocs parents */
+    .stMain, [data-testid="stSidebar"] {
+        margin-top: -2.5rem !important;
     }
+
+    /* On nettoie le Header pour qu'il ne bloque pas la remontée */
+    [data-testid="stHeader"] {
+        height: 0px !important;
+        background: transparent !important;
+    }
+
+    /* 7. AJUSTEMENT INTERNE DES CONTENEURS */
+
+    /* Côté Centre : On supprime les marges du premier bloc de KPIs */
+    .stApp [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:first-child {
+        margin-top: 0rem !important;
+        padding-top: 2rem !important;
+    }
+
+    /* Côté Sidebar : On ajuste l'espace interne */
+    [data-testid="stSidebarUserContent"] {
+        padding-top: 0rem !important;
+        margin-top: -2em !important; 
+    }
+
+    /* Nettoyage du conteneur de graphiques */
+    div.block-container {
+        padding-top: 1rem !important; /* Un peu d'air sous le haut de l'écran */
+        max-width: 95% !important;
+    }
+
     </style>
     """, unsafe_allow_html=True)
 
@@ -197,6 +246,10 @@ dimension_choisie = st.sidebar.selectbox(
     index=0
 )
 
+# Exclure ou non les versements dans synthese_3
+st.sidebar.divider()
+exclure_versements = st.sidebar.toggle("Exclure les versements 💸", value=False)
+
 # ajout d'un mode discret
 st.sidebar.divider()
 mode_discret = st.sidebar.checkbox("Mode discret 🔒", value=False)
@@ -242,7 +295,7 @@ synthese_1.update_layout(
         xanchor="right", x=-0.05,
         traceorder ="reversed", #normal
         title=""),
-    margin=dict(l=50, r=50, t=80, b=80),
+    margin=dict(l=50, r=50, t=40, b=80),
     hovermode="closest" # uniquement où je pointe
 )
 synthese_1.update_traces(
@@ -309,13 +362,39 @@ idx_actuel = liste_dates_obj.index(date_cible)
 # calcul des mouvements
 if idx_actuel > 0:
     date_precedente = liste_dates_obj[idx_actuel - 1]
-    df_t = df_now.groupby('Portefeuille')['Valeur'].sum() # Stock à T (filtré par tes checkboxes portefeuilles)
-    df_t_moins_1 = df_valo[
+    
+    # 1. Calcul de la variation de valeur totale (A)
+    val_t = df_now.groupby('Portefeuille')['Valeur'].sum()
+    val_t_moins_1 = df_valo[
         (df_valo['Date'] == date_precedente) & 
         (df_valo['Portefeuille'].isin(portefeuilles_selectionnes))
-    ].groupby('Portefeuille')['Valeur'].sum() # Stock à T-1 (même filtre de portefeuilles)
-    df_delta = (df_t - df_t_moins_1).reset_index() # Calcul de la variation brute
+    ].groupby('Portefeuille')['Valeur'].sum()
+    
+    delta_total = (val_t - val_t_moins_1).fillna(0)
+    
+    # 2. Gestion des versements (B)
+    if exclure_versements:
+        # On somme les versements enregistrés entre la date précédente (exclue) et la date cible (incluse)
+        mask_vers = (df_vers['Date'] > date_precedente) & \
+                    (df_vers['Date'] <= date_cible) & \
+                    (df_vers['Portefeuille'].isin(portefeuilles_selectionnes))
+        
+        vers_periode = df_vers[mask_vers].groupby('Portefeuille')['Versement'].sum().fillna(0)
+
+        # Variation Nette = Variation Totale - Versements
+        df_delta = (delta_total - vers_periode).reset_index()
+        titre_graph = f"<b>Performance nette (hors versements) vs {date_precedente.strftime('%d/%m/%Y')}</b>"
+    else:
+        df_delta = delta_total.reset_index()
+        titre_graph = f"<b>Variation totale (avec versements) vs {date_precedente.strftime('%d/%m/%Y')}</b>"
+
     df_delta.columns = ['Portefeuille', 'Variation']
+    df_delta['Variation'] = df_delta['Variation'].round(0)
+    df_delta = df_delta.sort_values('Variation', ascending=True)
+
+
+    df_delta.columns = ['Portefeuille', 'Variation']
+    df_delta['Variation'] = df_delta['Variation'].round(0) # Arrondi à l'euro dès le calcul
     df_delta = df_delta.sort_values('Variation', ascending=True) # On trie pour avoir les plus grosses hausses en haut
 else:
     df_delta = pd.DataFrame()
@@ -330,22 +409,25 @@ if not df_delta.empty:
         x='Variation',
         y='Portefeuille',
         orientation='h',
-        title=f"<b>Variation de valeur vs {date_precedente.strftime('%d/%m/%Y')}</b>",
+        title=titre_graph,
         text='Variation',
         template="plotly_white",
         color='Couleur',
         color_discrete_map="identity" # Utilise directement les codes hexa de la colonne 'Couleur'
     )
-
+    
+    # Formatage des étiquettes sur les barres
     synthese_3.update_traces(
-        texttemplate='%{text:+.0f} €', 
+        texttemplate='%{text:,.0f} €', 
         textposition='outside',
-        hovertemplate="<b>%{y}</b><br>Variation : %{x:+.2f} €<extra></extra>"
+        cliponaxis=False,
+        hovertemplate="<b>%{y}</b><br>%{x:+.2f} €<extra></extra>"
     )
 
     synthese_3.update_layout(
-        xaxis=dict(title="", showgrid=True, zeroline=True, zerolinewidth=2, zerolinecolor='black'),
-        yaxis=dict(title=""),
+        xaxis=dict(title="", showgrid=False, zeroline=True, zerolinewidth=2, zerolinecolor='grey',showticklabels=False),
+        yaxis=dict(title="", showgrid=False),
+        separators=", ",
         showlegend=False,
         margin=dict(l=50, r=50, t=50, b=50),
         height=400
@@ -353,24 +435,48 @@ if not df_delta.empty:
 
 ### KPIs en haut ###
 total_patrimoine = df_now['Valeur'].sum() # kpi total patrimoine
+total_investi = df_vers[
+    (df_vers['Date'] <= date_cible) & 
+    (df_vers['Portefeuille'].isin(portefeuilles_selectionnes))
+]['Versement'].sum()
+plus_value_globale = total_patrimoine - total_investi
 
-if mode_discret:
-    valeur_a_afficher = "•••••• €"
-else:
-    valeur_a_afficher = f"{total_patrimoine:,.0f} €".replace(",", " ")
 
 ##### 7. Layout des graphique et KPI
-# Agencement du centre
+# Gestion du texte pour le mode discret
+if mode_discret:
+    txt_patrimoine = "•••••• €"
+    txt_investi = "•••••• €"
+    txt_pv = "•••"
+else:
+    txt_patrimoine = f"{total_patrimoine:,.0f} €".replace(",", " ")
+    txt_investi = f"{total_investi:,.0f} €".replace(",", " ")
+    # Calcul du % de performance globale
+    perf_globale = (plus_value_globale / total_investi * 100) if total_investi != 0 else 0
+    txt_pv = f"{plus_value_globale:+,.0f} € ({perf_globale:+.1f}%)".replace(",", " ")
+
+# Affichage des KPIs en ligne
 st.markdown(
     f"""
-    <div style="padding-left: 5px; margin-bottom: 20px; border-bottom: 1px solid #f0f2f6; padding-bottom: 10px;">
-        <span style="color: gray; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px;">Patrimoine total au {date_selectionnee_fmt} :</span>
-        <span style="color: #666666; font-size: 1.1em; font-weight: 600; margin-left: 10px;">{valeur_a_afficher}</span>
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 2px solid #f0f2f6; margin-bottom: 20px;">
+        <div>
+            <span style="color: gray; font-size: 0.8em; text-transform: uppercase;">Patrimoine Total</span><br>
+            <span style="font-size: 1.5em; font-weight: 700; color: #1f77b4;">{txt_patrimoine}</span>
+        </div>
+        <div style="text-align: center;">
+            <span style="color: gray; font-size: 0.8em; text-transform: uppercase;">Total Investi</span><br>
+            <span style="font-size: 1.2em; font-weight: 600; color: #666666;">{txt_investi}</span>
+        </div>
+        <div style="text-align: right;">
+            <span style="color: gray; font-size: 0.8em; text-transform: uppercase;">Plus-value Latente</span><br>
+            <span style="font-size: 1.2em; font-weight: 600; color: {'#34a853' if plus_value_globale >= 0 else '#ea4335'};">{txt_pv}</span>
+        </div>
     </div>
     """, 
     unsafe_allow_html=True
 )
 
+# Layout des graphiques
 col1, col2 = st.columns([1.5, 1.1]) 
 
 with col1:
@@ -378,5 +484,9 @@ with col1:
 with col2:
     st.plotly_chart(synthese_2, use_container_width=True)
 
-st.divider()
-st.plotly_chart(synthese_3, use_container_width=True) # Affichage sur toute la largeur sous les deux autres graphiques
+st.markdown("<hr style='margin: 0px 0px 15px 0px; border: 1px solid #f0f2f6;'>", unsafe_allow_html=True)
+if not df_delta.empty:
+    st.plotly_chart(synthese_3, use_container_width=True) # Affichage sur toute la largeur sous les deux autres graphiques
+else:
+    # Si c'est vide (première date), on affiche un petit message discret
+    st.info("Sélectionnez une date ultérieure pour voir les mouvements par rapport au mois précédent.")
