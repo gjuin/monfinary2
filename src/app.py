@@ -282,11 +282,34 @@ synthese_1 = px.bar(
 )
 
 synthese_1.update_xaxes(type='category',title="", showgrid=False, tickangle=-40) # Rend les distances égales entre barres
+
+# Si mode discret on : on n'affiche rien (on vide les labels)
+if mode_discret:
+    # On définit 5 graduations réparties sur l'échelle max
+    max_val = df_valo.groupby('Date')['Valeur'].sum().max() * 1.1
+    vals = [max_val * i/4 for i in range(5)] # [0, 25%, 50%, 75%, 100%]
+    
+    y_axis_config = dict(
+        range=[0, max_val],
+        tickvals=vals,
+        ticktext=["•••• €"] * 5, # Remplace chaque chiffre par les points
+        title="",
+        showgrid=False,
+        side="right"
+    )
+else:
+    y_axis_config = dict(
+        range=[0, df_valo.groupby('Date')['Valeur'].sum().max() * 1.1],
+        title="",
+        showgrid=False,
+        side="right",
+        tickformat=",",
+        ticksuffix=" €"
+    )
+
 synthese_1.update_layout(
     bargap=0.3, # Élargit les barres (0 = collées, 1 = vide total)
-    yaxis=dict(
-        range=[0, df_valo.groupby('Date')['Valeur'].sum().max() * 1.1], # Fixe le max à +10% du record historique
-        title="", showgrid=False, side="right",tickformat=",",ticksuffix=" €"),
+    yaxis=y_axis_config,
     separators=", ", # Définit l'espace comme séparateur de milliers
     #xaxis=dict(title="", showgrid=False, tickangle=-40),
     legend=dict(
@@ -295,11 +318,12 @@ synthese_1.update_layout(
         xanchor="right", x=-0.05,
         traceorder ="reversed", #normal
         title=""),
-    margin=dict(l=50, r=50, t=40, b=80),
+    margin=dict(l=50, r=50, t=50, b=50),
+    height= 400,
     hovermode="closest" # uniquement où je pointe
 )
 synthese_1.update_traces(
-    hovertemplate="<b>%{fullData.name}</b> : %{y:,.0f} €<extra></extra>"
+    hovertemplate="<b>%{fullData.name}</b> : •••• €<extra></extra>" if mode_discret else "<b>%{fullData.name}</b> : %{y:,.0f} €<extra></extra>"
 )
 
 ### Synthese 2 - anneau circulaire dynamique ### 
@@ -339,20 +363,22 @@ synthese_2 = px.pie(
 )
 
 synthese_2.update_traces(
-    textinfo='percent+label',
+    textinfo='percent+label' if not mode_discret else 'label',
     textposition='outside',
-    rotation=45,
-    hovertemplate="<b>%{label}</b><br> %{value:,.0f} €<extra></extra>"
+    rotation=90,
+    hovertemplate="<b>%{label}</b><br>•••• €<extra></extra>" if mode_discret else "<b>%{label}</b><br> %{value:,.0f} €<extra></extra>"
 )
 
 synthese_2.update_layout(
     separators=", ",
     showlegend=False,
-    legend=dict(orientation="v", 
+    legend=dict(
+        orientation="v",
         yanchor="top", y=0.8, 
-        xanchor="right", x=-0.05),
-    margin=dict(l=50, r=50, t=80, b=80),
-    height=500
+        xanchor="right", x=-0.05,
+        title=""),
+    margin=dict(l=50, r=50, t=50, b=50),
+    height=400
 )
 
 ### Synthese 3 - les mouvements du patrimoine T - T-1 ### 
@@ -383,21 +409,47 @@ if idx_actuel > 0:
 
         # Variation Nette = Variation Totale - Versements
         df_delta = (delta_total - vers_periode).reset_index()
-        titre_graph = f"<b>Performance nette (hors versements) vs {date_precedente.strftime('%d/%m/%Y')}</b>"
+
     else:
         df_delta = delta_total.reset_index()
-        titre_graph = f"<b>Variation totale (avec versements) vs {date_precedente.strftime('%d/%m/%Y')}</b>"
-
-    df_delta.columns = ['Portefeuille', 'Variation']
-    df_delta['Variation'] = df_delta['Variation'].round(0)
-    df_delta = df_delta.sort_values('Variation', ascending=True)
-
 
     df_delta.columns = ['Portefeuille', 'Variation']
     df_delta['Variation'] = df_delta['Variation'].round(0) # Arrondi à l'euro dès le calcul
     df_delta = df_delta.sort_values('Variation', ascending=True) # On trie pour avoir les plus grosses hausses en haut
 else:
     df_delta = pd.DataFrame()
+
+# Calcul du total de la variation pour la période
+total_variation = df_delta['Variation'].sum()
+
+# Formatage propre du nombre (avec signe + et séparateur de milliers)
+if mode_discret:
+    val_affichage = "•••• €"
+else:
+    val_affichage = f"{total_variation:+,.0f} €".replace(",", " ")
+
+color_var = "#34a853" if total_variation >= 0 else "#ea4335"
+txt_total_var = f"<span style='color:{color_var};'>{val_affichage}</span>"
+
+# Construction du titre dynamique
+if exclure_versements:
+    titre_graph = f"<b>Performance nette : {txt_total_var}</b> <br><span style='font-size:0.8em; color:gray;'>(hors versements au {date_cible.strftime('%d/%m/%Y')} vs {date_precedente.strftime('%d/%m/%Y')})</span>"
+else:
+    titre_graph = f"<b>Variation totale : {txt_total_var}</b> <br><span style='font-size:0.8em; color:gray;'>(avec versements au {date_cible.strftime('%d/%m/%Y')} vs {date_precedente.strftime('%d/%m/%Y')})</span>"
+
+#  Calcul des bornes fixes pour l'axe X du Graphique 3 
+# On calcule la variation totale (V_t - V_t-1) pour chaque date de l'historique
+df_histo_delta = df_valo.groupby(['Date', 'Portefeuille'])['Valeur'].sum().reset_index()
+df_histo_delta['Prev_Valeur'] = df_histo_delta.groupby('Portefeuille')['Valeur'].shift(1)
+df_histo_delta['Diff'] = df_histo_delta['Valeur'] - df_histo_delta['Prev_Valeur']
+
+# On récupère le plus gros gain et la plus grosse perte jamais enregistrée
+# On ajoute une marge de 15% pour que les étiquettes de texte ne sortent pas du cadre
+max_delta = df_histo_delta['Diff'].max() * 1.15
+min_delta = df_histo_delta['Diff'].min() * 1.15
+
+# On s'assure que si tout est positif, l'axe montre quand même un peu de négatif pour l'équilibre
+range_x = [min_delta if min_delta < 0 else -100, max_delta if max_delta > 0 else 100]
 
 # génération du graphique
 if not df_delta.empty:
@@ -418,18 +470,18 @@ if not df_delta.empty:
     
     # Formatage des étiquettes sur les barres
     synthese_3.update_traces(
-        texttemplate='%{text:,.0f} €', 
+        texttemplate= '•••• €' if mode_discret else '%{text:,.0f} €', 
         textposition='outside',
         cliponaxis=False,
         hovertemplate="<b>%{y}</b><br>%{x:+.2f} €<extra></extra>"
     )
 
     synthese_3.update_layout(
-        xaxis=dict(title="", showgrid=False, zeroline=True, zerolinewidth=2, zerolinecolor='grey',showticklabels=False),
+        xaxis=dict(title="", range=range_x, showgrid=False, zeroline=True, zerolinewidth=2, zerolinecolor='grey',showticklabels=False),
         yaxis=dict(title="", showgrid=False),
         separators=", ",
         showlegend=False,
-        margin=dict(l=50, r=50, t=50, b=50),
+        margin=dict(l=50, r=50, t=60, b=50),
         height=400
     )
 
@@ -482,6 +534,7 @@ col1, col2 = st.columns([1.5, 1.1])
 with col1:
     st.plotly_chart(synthese_1, use_container_width=True)
 with col2:
+    # Si le donut est trop bas, on peut forcer une marge négative ici
     st.plotly_chart(synthese_2, use_container_width=True)
 
 st.markdown("<hr style='margin: 0px 0px 15px 0px; border: 1px solid #f0f2f6;'>", unsafe_allow_html=True)
