@@ -406,54 +406,41 @@ if idx_actuel > 0:
                     (df_vers['Portefeuille'].isin(portefeuilles_selectionnes))
         
         vers_periode = df_vers[mask_vers].groupby('Portefeuille')['Versement'].sum().fillna(0)
-
         # Variation Nette = Variation Totale - Versements
         df_delta = (delta_total - vers_periode).reset_index()
-
     else:
         df_delta = delta_total.reset_index()
 
     df_delta.columns = ['Portefeuille', 'Variation']
     df_delta['Variation'] = df_delta['Variation'].round(0) # Arrondi à l'euro dès le calcul
     df_delta = df_delta.sort_values('Variation', ascending=True) # On trie pour avoir les plus grosses hausses en haut
-else:
-    df_delta = pd.DataFrame()
 
-# Calcul du total de la variation pour la période
-total_variation = df_delta['Variation'].sum()
+    # calcul du titre dynamique
+    total_variation = df_delta['Variation'].sum()
+    color_var = "#34a853" if total_variation >= 0 else "#ea4335"
 
-# Formatage propre du nombre (avec signe + et séparateur de milliers)
-if mode_discret:
-    val_affichage = "•••• €"
-else:
-    val_affichage = f"{total_variation:+,.0f} €".replace(",", " ")
+    if mode_discret:
+        val_affichage = "•••• €"
+    else:
+        val_affichage = f"{total_variation:+,.0f} €".replace(",", " ")
+    
+    txt_total_var = f"<span style='color:{color_var};'>{val_affichage}</span>"
 
-color_var = "#34a853" if total_variation >= 0 else "#ea4335"
-txt_total_var = f"<span style='color:{color_var};'>{val_affichage}</span>"
+    if exclure_versements:
+        titre_graph = f"<b>Performance nette : {txt_total_var}</b> <br><span style='font-size:0.8em; color:gray;'>(hors versements au {date_cible.strftime('%d/%m/%Y')} vs {date_precedente.strftime('%d/%m/%Y')})</span>"
+    else:
+        titre_graph = f"<b>Variation totale : {txt_total_var}</b> <br><span style='font-size:0.8em; color:gray;'>(avec versements au {date_cible.strftime('%d/%m/%Y')} vs {date_precedente.strftime('%d/%m/%Y')})</span>"
 
-# Construction du titre dynamique
-if exclure_versements:
-    titre_graph = f"<b>Performance nette : {txt_total_var}</b> <br><span style='font-size:0.8em; color:gray;'>(hors versements au {date_cible.strftime('%d/%m/%Y')} vs {date_precedente.strftime('%d/%m/%Y')})</span>"
-else:
-    titre_graph = f"<b>Variation totale : {txt_total_var}</b> <br><span style='font-size:0.8em; color:gray;'>(avec versements au {date_cible.strftime('%d/%m/%Y')} vs {date_precedente.strftime('%d/%m/%Y')})</span>"
+    # --- Bornes fixes de l'axe X ---
+    df_histo_delta = df_valo.groupby(['Date', 'Portefeuille'])['Valeur'].sum().reset_index()
+    df_histo_delta['Prev_Valeur'] = df_histo_delta.groupby('Portefeuille')['Valeur'].shift(1)
+    df_histo_delta['Diff'] = df_histo_delta['Valeur'] - df_histo_delta['Prev_Valeur']
+    
+    max_delta = df_histo_delta['Diff'].max() * 1.15
+    min_delta = df_histo_delta['Diff'].min() * 1.15
+    range_x = [min_delta if min_delta < 0 else -100, max_delta if max_delta > 0 else 100]
 
-#  Calcul des bornes fixes pour l'axe X du Graphique 3 
-# On calcule la variation totale (V_t - V_t-1) pour chaque date de l'historique
-df_histo_delta = df_valo.groupby(['Date', 'Portefeuille'])['Valeur'].sum().reset_index()
-df_histo_delta['Prev_Valeur'] = df_histo_delta.groupby('Portefeuille')['Valeur'].shift(1)
-df_histo_delta['Diff'] = df_histo_delta['Valeur'] - df_histo_delta['Prev_Valeur']
-
-# On récupère le plus gros gain et la plus grosse perte jamais enregistrée
-# On ajoute une marge de 15% pour que les étiquettes de texte ne sortent pas du cadre
-max_delta = df_histo_delta['Diff'].max() * 1.15
-min_delta = df_histo_delta['Diff'].min() * 1.15
-
-# On s'assure que si tout est positif, l'axe montre quand même un peu de négatif pour l'équilibre
-range_x = [min_delta if min_delta < 0 else -100, max_delta if max_delta > 0 else 100]
-
-# génération du graphique
-if not df_delta.empty:
-    # On définit une couleur conditionnelle : Vert si +, Rouge si -
+    # --- Génération du graphique ---
     df_delta['Couleur'] = df_delta['Variation'].apply(lambda x: '#34a853' if x >= 0 else '#ea4335')
 
     synthese_3 = px.bar(
@@ -465,25 +452,31 @@ if not df_delta.empty:
         text='Variation',
         template="plotly_white",
         color='Couleur',
-        color_discrete_map="identity" # Utilise directement les codes hexa de la colonne 'Couleur'
+        color_discrete_map="identity"
     )
     
-    # Formatage des étiquettes sur les barres
+    # Formatage des étiquettes (Mode Discret inclus)
+    text_template = '•••• €' if mode_discret else '%{text:,.0f} €'
+    
     synthese_3.update_traces(
-        texttemplate= '•••• €' if mode_discret else '%{text:,.0f} €', 
+        texttemplate=text_template, 
         textposition='outside',
         cliponaxis=False,
-        hovertemplate="<b>%{y}</b><br>%{x:+.2f} €<extra></extra>"
+        hovertemplate="<b>%{y}</b><br>•••• €<extra></extra>" if mode_discret else "<b>%{y}</b><br>%{x:+.0f} €<extra></extra>"
     )
 
     synthese_3.update_layout(
-        xaxis=dict(title="", range=range_x, showgrid=False, zeroline=True, zerolinewidth=2, zerolinecolor='grey',showticklabels=False),
+        xaxis=dict(title="", range=range_x, showgrid=False, zeroline=True, zerolinewidth=2, zerolinecolor='grey', showticklabels=False),
         yaxis=dict(title="", showgrid=False),
         separators=", ",
         showlegend=False,
         margin=dict(l=50, r=50, t=60, b=50),
         height=400
     )
+else:
+    # Si c'est la première date, on s'assure que df_delta est vide pour le message final
+    df_delta = pd.DataFrame()
+    synthese_3 = None
 
 ### KPIs en haut ###
 total_patrimoine = df_now['Valeur'].sum() # kpi total patrimoine
