@@ -41,7 +41,7 @@ st.markdown("""
     }
     /* Taille du texte à l'intérieur du menu déroulant une fois sélectionné */
     [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
-        font-size: 13px !important;
+        font-size: 12px !important;
         padding-top: 2px !important;
         padding-bottom: 2px !important;
         min-height: 30px !important;
@@ -89,9 +89,13 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-##### 1. Connexion (à adapter avec ton URL)
+
+
+##### 1. Connexion 
 url = "https://docs.google.com/spreadsheets/d/1ZWOQWdYI7CXen4RRkvKkWnRTA_xydKO0sZHwFdGzj7M/edit#gid=0"
 conn = st.connection("gsheets", type=GSheetsConnection)
+
+
 
 ##### 2. Chargement des données
 @st.cache_data(ttl=600)
@@ -100,6 +104,7 @@ def get_all_data():
     df_valo = conn.read(spreadsheet=url, worksheet="data_valo")
     df_vers = conn.read(spreadsheet=url, worksheet="data_vers")
     df_map = conn.read(spreadsheet=url, worksheet="mapping")
+    df_scenar = conn.read(spreadsheet=url, worksheet="scenar")
     
     # Transformation de "Wide" à "Long" (Melt)
     # On garde Produit, Véhicule, Plateforme et on bascule les dates en lignes
@@ -153,10 +158,28 @@ def get_all_data():
     )
     df_map['Pourcentage'] = pd.to_numeric(df_map['Pourcentage'], errors='coerce').fillna(0)
 
-    return df_long_valo, df_long_vers, df_map
+    # Nettoyage scenar
+    for col in df_scenar.columns[2:]:
+        df_scenar[col] = (
+            df_scenar[col]
+            .astype(str)
+            .str.replace(',', '.')
+            .pipe(pd.to_numeric, errors='coerce')
+            .fillna(0)
+        )
+    
+    df_scenar['Dimension'] = df_scenar['Dimension'].astype(str).str.strip()
+    df_scenar['Sous-Catégorie'] = df_scenar['Sous-Catégorie'].astype(str).str.strip()
+
+
+    return df_long_valo, df_long_vers, df_map, df_scenar
+
+
 
 ##### 3. Récupération des données
-df_valo, df_vers, df_map = get_all_data()
+df_valo, df_vers, df_map, df_scenar = get_all_data()
+
+
 
 ##### 4. Mapping de style
 ordre_portefeuille = ["Livret A", 
@@ -207,6 +230,8 @@ CONFIG_STYLES = {
     }
 }
 
+
+
 ##### 5. Création de l'UI
 # Slider date
 liste_dates_obj = sorted(df_valo['Date'].unique()) 
@@ -253,6 +278,7 @@ exclure_versements = st.sidebar.toggle("Exclure les versements 💸", value=Fals
 # ajout d'un mode discret
 st.sidebar.divider()
 mode_discret = st.sidebar.checkbox("Mode discret 🔒", value=False)
+
 
 
 ##### 6. Interface et Graphique
@@ -477,6 +503,27 @@ else:
     # Si c'est la première date, on s'assure que df_delta est vide pour le message final
     df_delta = pd.DataFrame()
     synthese_3 = None
+
+### Synthese 4 - l'antifragilité  ### 
+df_map_filtree = df_map[df_map['Dimension'].isin(['Géo','Secteur',"Classe d'actif"])] # on ne garde que ces 3 dimensions
+df_radar = pd.merge(df_now, df_map_filtree, on='Produit') # merge avec la valo à la date voulue et aux portefeuilles choisis
+df_radar = pd.merge(df_radar, df_scenar, on=['Dimension', 'Sous-Catégorie']) # on enrichit avec les scores des dimensions par scénario
+
+df_radar['Valo_Ponderee'] = df_radar['Valeur'] * df_radar['Pourcentage'] # un produit peut être doublé voir triplé car ventilé par dimension
+
+# Calcul des scores par scénario
+resultats_radar = {}
+for s in df_scenar.columns[2:]:
+    # On calcule l'impact (Valeur * Coeff)
+    impact_total = (df_radar['Valo_Ponderee'] * df_radar[s]).sum()
+    valo_totale = df_radar['Valo_Ponderee'].sum()
+    
+    # Moyenne pondérée (-1 à +1)
+    moyenne_ponderee = impact_total / valo_totale if valo_totale != 0 else 0
+    
+    # Transformation en score 0-100
+    resultats_radar[s] = 50 + (moyenne_ponderee * 50) # On utilise 50 comme base (neutre)
+
 
 ### KPIs en haut ###
 total_patrimoine = df_now['Valeur'].sum() # kpi total patrimoine
