@@ -5,6 +5,8 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 #from datetime import datetime
 import plotly.express as px
+import plotly.graph_objects as go
+import numpy as np
 
 # largeur d'écran streamlit
 st.set_page_config(layout="wide")
@@ -496,7 +498,7 @@ if idx_actuel > 0:
         yaxis=dict(title="", showgrid=False),
         separators=", ",
         showlegend=False,
-        margin=dict(l=50, r=50, t=60, b=50),
+        margin=dict(l=50, r=50, t=50, b=50),
         height=400
     )
 else:
@@ -512,18 +514,125 @@ df_radar = pd.merge(df_radar, df_scenar, on=['Dimension', 'Sous-Catégorie']) # 
 df_radar['Valo_Ponderee'] = df_radar['Valeur'] * df_radar['Pourcentage'] # un produit peut être doublé voir triplé car ventilé par dimension
 
 # Calcul des scores par scénario
-resultats_radar = {}
-for s in df_scenar.columns[2:]:
-    # On calcule l'impact (Valeur * Coeff)
-    impact_total = (df_radar['Valo_Ponderee'] * df_radar[s]).sum()
-    valo_totale = df_radar['Valo_Ponderee'].sum()
-    
-    # Moyenne pondérée (-1 à +1)
-    moyenne_ponderee = impact_total / valo_totale if valo_totale != 0 else 0
-    
-    # Transformation en score 0-100
-    resultats_radar[s] = 50 + (moyenne_ponderee * 50) # On utilise 50 comme base (neutre)
+poids_dimensions = {
+    "Classe d'actif": 0.80,
+    "Secteur": 0.10,
+    "Géo": 0.10
+}
 
+resultats_radar = {}
+scenarios = df_scenar.columns[2:]
+for s in scenarios:
+    scores_par_dimension = []
+    poids_effectifs = []
+    
+    for dim, poids in poids_dimensions.items():
+        # On filtre les données pour cette dimension précise
+        df_dim = df_radar[df_radar['Dimension'] == dim]
+
+        if not df_dim.empty:
+            # Calcul de l'impact pondéré pour cette dimension
+            impact_dim = (df_dim['Valo_Ponderee'] * df_dim[s]).sum()
+            valo_dim = df_dim['Valo_Ponderee'].sum()
+            
+            # Score de la dimension (-1 à +1)
+            score_dim = impact_dim / valo_dim if valo_dim != 0 else 0
+            
+            scores_par_dimension.append(score_dim)
+            poids_effectifs.append(poids)
+    
+    # moyenne pondérée des scores des dimensions
+    if scores_par_dimension:
+        # On normalise les poids au cas où une dimension serait absente
+        total_poids = sum(poids_effectifs)
+        moyenne_finale = sum(s * p / total_poids for s, p in zip(scores_par_dimension, poids_effectifs))
+    else:
+        moyenne_finale = 0
+
+    # transformation en score 0-100
+    resultats_radar[s] = 50 + (moyenne_finale * 50)
+
+# Préparation au graphique
+# on met les résultats dans un table à 2 colonnes (label et score)
+scenarios_labels = [s.replace('_', ' ').title() for s in scenarios]
+scores = [resultats_radar[s] for s in scenarios]
+
+# calcul des positions des axes (basé sur les 10 labels originaux)
+nb_scenarios = len(scenarios_labels)
+angles_scenarios = np.linspace(0, 360, nb_scenarios, endpoint=False)
+
+# on ferme la boucle pour le tracé (on répète le 1er score à la fin)
+scores_plot = scores + [scores[0]]
+angles_plot = list(angles_scenarios) + [360]
+
+# Fonction pour générer un cercle lisse (100 points)
+def get_circle_points(radius):
+    t = np.linspace(0, 360, 100)
+    return [radius] * 100, t
+
+r_fragile, t_circle = get_circle_points(33)
+r_neutre, _ = get_circle_points(66)
+
+# le graphique
+synthese_4 = go.Figure()
+
+# zone neutre 33-66
+synthese_4.add_trace(go.Scatterpolar(
+    r=r_neutre,
+    theta=t_circle,
+    fill='toself',
+    fillcolor="rgba(255, 229, 153, 1)",
+    line=dict(width=0),
+    marker=dict(opacity=0), # Supprime les points
+    hoverinfo='skip',
+    showlegend=False
+))
+
+# zone fragile <33
+synthese_4.add_trace(go.Scatterpolar(
+    r= r_fragile,
+    theta= t_circle,
+    fill='toself',
+    fillcolor="rgba(234, 153, 153, 1)",
+    line=dict(width=0),
+    marker=dict(opacity=0), 
+    hoverinfo='skip',
+    showlegend=False
+))
+
+# mon épargne - Par-dessus tout le reste
+synthese_4.add_trace(go.Scatterpolar(
+    r=scores_plot,
+    theta=angles_plot,
+    fill='toself',
+    customdata=scenarios_labels + [scenarios_labels[0]],
+    hovertemplate="<b>%{customdata}</b><br>%{r:.1f}<extra></extra>",
+    line=dict(color="#434343", width=2),
+    marker=dict(opacity=1,size=4), 
+    fillcolor="rgba(31, 119, 180, 0.3)"
+))
+
+synthese_4.update_layout(
+    title="<b>Radar de Robustesse</b>",
+    showlegend=False,
+    height=400,
+    polar=dict(
+        bgcolor="rgba(182, 215, 168, 1)", # Fond vert (Antifragile)
+        radialaxis=dict(
+            visible=False,           # On le réactive pour voir la grille
+            range=[0, 100]
+            ),
+        angularaxis=dict(
+            #tickfont=dict(size=11, color="gray"),
+            tickvals=angles_scenarios,     # On dit à Plotly où sont les points
+            ticktext=scenarios_labels,      # On lui donne les noms à afficher à ces endroits
+            rotation=90,
+            direction="clockwise",
+            showgrid=False
+        )
+    ),
+    margin=dict(l=50, r=50, t=50, b=50)
+)
 
 ### KPIs en haut ###
 total_patrimoine = df_now['Valeur'].sum() # kpi total patrimoine
@@ -569,7 +678,7 @@ st.markdown(
 )
 
 # Layout des graphiques
-col1, col2 = st.columns([1.5, 1.1]) 
+col1, col2 = st.columns([1.4, 1.1]) 
 
 with col1:
     st.plotly_chart(synthese_1, use_container_width=True)
@@ -578,8 +687,13 @@ with col2:
     st.plotly_chart(synthese_2, use_container_width=True)
 
 st.markdown("<hr style='margin: 0px 0px 15px 0px; border: 1px solid #f0f2f6;'>", unsafe_allow_html=True)
-if not df_delta.empty:
-    st.plotly_chart(synthese_3, use_container_width=True) # Affichage sur toute la largeur sous les deux autres graphiques
-else:
-    # Si c'est vide (première date), on affiche un petit message discret
-    st.info("Sélectionnez une date ultérieure pour voir les mouvements par rapport au mois précédent.")
+col3, col4 = st.columns([1.4, 1.1])
+
+with col3:
+    if not df_delta.empty:
+        st.plotly_chart(synthese_3, use_container_width=True) # Affichage sur toute la largeur sous les deux autres graphiques
+    else:
+        # Si c'est vide (première date), on affiche un petit message discret
+        st.info("Sélectionnez une date ultérieure pour voir les mouvements par rapport au mois précédent.")
+with col4:
+    st.plotly_chart(synthese_4, use_container_width=True)
