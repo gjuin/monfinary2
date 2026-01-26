@@ -87,6 +87,17 @@ st.markdown("""
         max-width: 95% !important;
     }
 
+    /* 8. BOUTON ICONE QUADRANTS */
+    [data-testid="stSidebarUserContent"] button[kind="secondary"] {
+    padding: 2px 8px !important;
+    min-height: 28px !important;
+    font-size: 16px !important;
+    }
+
+    [data-testid="stSidebarUserContent"] hr + div {
+    margin-top: -8px !important;
+    }
+
  
 
     </style>
@@ -353,8 +364,18 @@ dimension_choisie = st.sidebar.selectbox(
 # Item 4 - Information Quadrant 
 st.sidebar.divider()
 
-if st.sidebar.button("ℹ️ Comprendre les quadrants", key="btn_quadrant_info"):
-    show_help_quadrants()
+# Créer une ligne avec icône cliquable + texte
+col_icon, col_text = st.sidebar.columns([0.15, 0.85])
+
+with col_icon:
+    if st.button("ℹ️", key="btn_quadrant_info", help="Comprendre les quadrants"):
+        show_help_quadrants()
+
+with col_text:
+    st.markdown(
+        "<p style='font-size: 13px; margin: 0; padding-top: 4px; color: rgb(250, 250, 250);'>Comprendre les quadrants</p>", 
+        unsafe_allow_html=True
+    )
 
 #  Item 5 - Exclure ou non les versements dans synthese_3
 st.sidebar.divider()
