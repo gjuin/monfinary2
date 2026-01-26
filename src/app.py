@@ -56,10 +56,9 @@ st.markdown("""
     }
 
     /* 6. REMONTÉE SYNCHRONISÉE SIDEBAR & CONTENU */
-    
     /* On applique la même marge négative aux deux blocs parents */
     .stMain, [data-testid="stSidebar"] {
-        margin-top: -2.5rem !important;
+        margin-top: -3.5rem !important;
     }
 
     /* On nettoie le Header pour qu'il ne bloque pas la remontée */
@@ -79,7 +78,7 @@ st.markdown("""
     /* Côté Sidebar : On ajuste l'espace interne */
     [data-testid="stSidebarUserContent"] {
         padding-top: 0rem !important;
-        margin-top: -2em !important; 
+        margin-top: -2.5em !important; 
     }
 
     /* Nettoyage du conteneur de graphiques */
@@ -88,10 +87,62 @@ st.markdown("""
         max-width: 95% !important;
     }
 
+ 
+
     </style>
     """, unsafe_allow_html=True)
 
+# info sur les quadrants
+@st.dialog("Boussole de l'Antifragilité", width="large")
+def show_help_quadrants():
+    st.markdown("""
+    ### 🧭 Les 4 Régimes Économiques
+    L'économie oscille selon deux forces : l'**Inflation** et la **Croissance**. 
+    Chaque quadrant favorise des actifs spécifiques.
+    """)
+    
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.markdown("""
+        **🔥 Nord-Est : Inflationary Boom**
+        *Surchauffe, forte demande.*
+        * **Actifs :** Matières Premières, Or, Actions Énergie/Value.
+        
+        **❄️ Sud-Est : Disinflationary Boom**
+        *Croissance saine, "Goldilocks".*
+        * **Actifs :** Actions Tech, Nasdaq, Bitcoin.
+        """)
+    with col_b:
+        st.markdown("""
+        **⚡ Nord-Ouest : Inflationary Bust**
+        *Stagflation, hausse des coûts.*
+        * **Actifs :** Or, Cash, Obligations très courtes.
+        
+        **🌊 Sud-Ouest : Disinflationary Bust**
+        *Récession classique, déflation.*
+        * **Actifs :** Obligations d'État (LT), Cash, Santé.*
+        """)
 
+    # Schéma textuel
+    st.code("""
+    #### 🔄 Schéma des Transitions
+
+                   INFLATION (Nord)
+                          ▲
+          STAGFLATION     |    SURCHAUFFE
+         (Inflationiste)  |   (Inflationiste)
+              BUST        |        BOOM
+                          |
+    <--- BUST (Ouest) --------------> BOOM (Est)
+                          |
+          RÉCESSION       |    GOLDILOCKS
+       (Déflationiste)    |  (Déflationiste)
+              BUST        |        BOOM
+                          ▼
+                  DÉSINFLATION (Sud)
+    """, language=None)
+    
+    st.info("💡 **Conseil :** Si votre radar est équilibré sur les 4 quadrants, vous n'avez pas besoin de prédire la prochaine transition, votre patrimoine est prêt à l'absorber.")
 
 ##### 1. Connexion 
 url = "https://docs.google.com/spreadsheets/d/1ZWOQWdYI7CXen4RRkvKkWnRTA_xydKO0sZHwFdGzj7M/edit#gid=0"
@@ -184,6 +235,12 @@ df_valo, df_vers, df_map, df_scenar = get_all_data()
 
 
 ##### 4. Mapping de style
+# création de la superclasse d'actif : 4-5 sous-catgéories max action or oblig cash ...
+df_classes = df_map[df_map['Dimension'] == "Classe d'actif"].copy()
+df_classes['Sous-Catégorie'] = df_classes['Sous-Catégorie'].astype(str).str.split().str[0]
+df_classes['Dimension'] = "Superclasse d'actif"
+df_map = pd.concat([df_map, df_classes], ignore_index=True)
+
 ordre_portefeuille = ["Livret A", 
                       "LDDS", 
                       "Livret Bourso +",
@@ -209,12 +266,23 @@ couleurs_portefeuille = {
 }
 
 CONFIG_STYLES = {
-    "Classe d'actif": {
+    "Superclasse d'actif": {
         "couleurs": {
-            "Action": "#ea4335", "Obligation": "#4285f4", "Cash": "#34a853",
+            "Action": "#ea4335", 
+            "Obligation": "#4285f4", "Cash": "#34a853",
             "Or": "#fbbc04", "Crypto": "#ff9900", "Métaux": "#f1caad", "Divers": "#8e7cc3"
         },
-        "ordre": ["Action", "Obligation", "Cash", "Or", "Crypto", "Métaux", "Divers"]
+        "ordre": ["Action", "Obligation","Cash", "Or", "Crypto", "Métaux", "Divers"]
+    },
+    "Classe d'actif": {
+        "couleurs": {
+            "Action": "#ea4335", 
+            "Obligation CT": "#4285f4", "Obligation MT": "#4285f4", "Obligation LT": "#4285f4",
+            "Cash 0%": "#34a853", "Cash Rémunéré": "#34a853",
+            "Or": "#fbbc04", "Crypto": "#ff9900", "Métaux": "#f1caad", "Divers": "#8e7cc3"
+        },
+        "ordre": ["Action", "Obligation CT", "Obligation MT", "Obligation LT",
+        "Cash 0%", "Cash Rémunéré", "Or", "Crypto", "Métaux", "Divers"]
     },
     "Géo": {
         "couleurs": {
@@ -225,21 +293,23 @@ CONFIG_STYLES = {
     },
     "Type de produit": {
         "couleurs": {
-            "Action": "#ea4335", "ETF": "#9900ff", "OPCVM": "#cccc00", "Cash": "#34a853", "Fonds €": "#0f2a8e",
+            "Action": "#ea4335", "ETF": "#9900ff", "OPCVM": "#cccc00", 
+            "Cash  0%": "#34a853", "Cash Rémunéré": "#34a853", 
+            "Fonds €": "#0f2a8e",
             "Crypto": "#ff9900"
         },
-        "ordre": ["Cash", "ETF", "Action", "OPCVM", "Crypto", "Fonds €"]
+        "ordre": ["Cash  0%", "Cash Rémunéré", "ETF", "Action", "OPCVM", "Crypto", "Fonds €"]
     }
 }
 
 
 
 ##### 5. Création de l'UI
-# Slider date
+# Item 1 - Slider date
 liste_dates_obj = sorted(df_valo['Date'].unique()) 
 liste_dates_str = [d.strftime('%d/%m/%Y') for d in liste_dates_obj] # conversion en string
 
-st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 5px;'>DATE ⚙️</ :", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 2px;'>DATE ⚙️</ :", unsafe_allow_html=True)
 date_selectionnee_fmt = st.sidebar.select_slider(
     "Faites glisser pour changer de date :",
     options=liste_dates_str,
@@ -248,9 +318,9 @@ date_selectionnee_fmt = st.sidebar.select_slider(
 
 date_cible = pd.to_datetime(date_selectionnee_fmt, dayfirst=True).date()
 
-# Filtre de portefeuille (multiselect)
+#  Item 2 - Filtre de portefeuille (multiselect)
 st.sidebar.divider()
-st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 5px;'>PORTEFEUILLES 🗂️</ :", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 2px;'>PORTEFEUILLES 🗂️</ :", unsafe_allow_html=True)
 
 portefeuilles_selectionnes = [] # On crée une liste vide pour stocker les choix
 liste_portefeuilles_dispo = sorted(df_valo['Portefeuille'].unique()) # On boucle sur chaque portefeuille unique pour créer sa case à cocher
@@ -260,12 +330,19 @@ for p in liste_portefeuilles_dispo:
     if st.sidebar.checkbox(p, value=True, key=f"check_{p}"):
         portefeuilles_selectionnes.append(p)
 
-# Filtrer l'allocation selon la sous-catégorie
+#  Item 3 - Filtrer l'allocation selon la sous-catégorie
 st.sidebar.divider()
-st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 5px;'>ALLOCATION 📊</ :", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 2px;'>ALLOCATION 📊</ :", unsafe_allow_html=True)
 
-dimensions_disponibles = sorted(df_map['Dimension'].unique()) # On récupère les dimensions uniques présentes dans ton onglet mapping
-dimensions_disponibles = [d for d in dimensions_disponibles if d not in ["Sous-jacent", "Secteur"]]
+ordre_dimensions = ["Superclasse d'actif", "Classe d'actif", "Géo", "Type de produit"]
+
+dimensions_disponibles = [d for d in ordre_dimensions if d not in ["Sous-jacent", "Secteur"]]
+
+# On définit l'index par défaut sur "Superclasse d'actif" s'il existe
+try:
+    default_index = dimensions_disponibles.index("Superclasse d'actif")
+except ValueError:
+    default_index = 0
 
 dimension_choisie = st.sidebar.selectbox(
     "Regrouper par :",
@@ -273,11 +350,17 @@ dimension_choisie = st.sidebar.selectbox(
     index=0
 )
 
-# Exclure ou non les versements dans synthese_3
+# Item 4 - Information Quadrant 
+st.sidebar.divider()
+
+if st.sidebar.button("ℹ️ Comprendre les quadrants", key="btn_quadrant_info"):
+    show_help_quadrants()
+
+#  Item 5 - Exclure ou non les versements dans synthese_3
 st.sidebar.divider()
 exclure_versements = st.sidebar.toggle("Exclure les versements 💸", value=False)
 
-# ajout d'un mode discret
+#  Item 6 - ajout d'un mode discret
 st.sidebar.divider()
 mode_discret = st.sidebar.checkbox("Mode discret 🔒", value=False)
 
@@ -384,7 +467,7 @@ synthese_2 = px.pie(
     values='Valeur_Ponderee',
     hole=0.5,
     color='Sous-Catégorie',
-    color_discrete_map=couleurs_map, # Applique tes couleurs personnalisées
+    color_discrete_map=couleurs_map, 
     category_orders={"Sous-Catégorie": ordre_cat}, # Applique ton ordre
     title=f"<b>Répartition par {dimension_choisie}</b>",
     template="plotly_white"
@@ -515,41 +598,50 @@ df_radar['Valo_Ponderee'] = df_radar['Valeur'] * df_radar['Pourcentage'] # un pr
 
 # Calcul des scores par scénario
 poids_dimensions = {
-    "Classe d'actif": 0.80,
-    "Secteur": 0.10,
-    "Géo": 0.10
+    "Classe d'actif": 0.50,
+    "Secteur": 0.25,
+    "Géo": 0.25
 }
 
 resultats_radar = {}
-scenarios = df_scenar.columns[2:]
+scenarios = df_scenar.columns[2:12]
 for s in scenarios:
-    scores_par_dimension = []
-    poids_effectifs = []
-    
-    for dim, poids in poids_dimensions.items():
-        # On filtre les données pour cette dimension précise
-        df_dim = df_radar[df_radar['Dimension'] == dim]
+    scores_par_produit = []
+    poids_totaux_produits = []
 
-        if not df_dim.empty:
-            # Calcul de l'impact pondéré pour cette dimension
-            impact_dim = (df_dim['Valo_Ponderee'] * df_dim[s]).sum()
-            valo_dim = df_dim['Valo_Ponderee'].sum()
+    # On itère par produit pour gérer le 70/30 individuellement
+    for produit in df_radar['Produit'].unique():
+        df_p = df_radar[df_radar['Produit'] == produit]
+        
+        # On vérifie quelles dimensions sont présentes pour ce produit
+        dims_presentes = df_p['Dimension'].unique()
+        
+        if "Secteur" not in dims_presentes or df_p[df_p['Dimension']=="Secteur"]['Sous-Catégorie'].iloc[0] in ["", "N/A"]:
+            poids_actuels = {"Classe d'actif": 0.70, "Géo": 0.30, "Secteur": 0.0}
+        else:
+            poids_actuels = {"Classe d'actif": 0.50, "Géo": 0.25, "Secteur": 0.25}
             
-            # Score de la dimension (-1 à +1)
-            score_dim = impact_dim / valo_dim if valo_dim != 0 else 0
-            
-            scores_par_dimension.append(score_dim)
-            poids_effectifs.append(poids)
-    
-    # moyenne pondérée des scores des dimensions
-    if scores_par_dimension:
-        # On normalise les poids au cas où une dimension serait absente
-        total_poids = sum(poids_effectifs)
-        moyenne_finale = sum(s * p / total_poids for s, p in zip(scores_par_dimension, poids_effectifs))
-    else:
-        moyenne_finale = 0
+        score_produit = 0
+        poids_cumule_produit = 0
+        
+        for dim in ["Classe d'actif", "Géo", "Secteur"]:
+            df_p_dim = df_p[df_p['Dimension'] == dim]
+            if not df_p_dim.empty:
+                coeff = df_p_dim[s].iloc[0]
+                poids = poids_actuels[dim]
+                score_produit += coeff * poids
+                poids_cumule_produit += poids
+        
+        # Normalisation du score produit (au cas où une Géo manque aussi)
+        if poids_cumule_produit > 0:
+            score_final_produit = score_produit / poids_cumule_produit
+            # Pondération par la valeur réelle du produit dans le portefeuille
+            valo_relative = df_p['Valeur'].iloc[0] 
+            scores_par_produit.append(score_final_produit * valo_relative)
+            poids_totaux_produits.append(valo_relative)
 
-    # transformation en score 0-100
+    # Moyenne finale du scénario
+    moyenne_finale = sum(scores_par_produit) / sum(poids_totaux_produits)
     resultats_radar[s] = 50 + (moyenne_finale * 50)
 
 # Préparation au graphique
@@ -557,13 +649,11 @@ for s in scenarios:
 scenarios_labels = [s.replace('_', ' ').title() for s in scenarios]
 scores = [resultats_radar[s] for s in scenarios]
 
-# calcul des positions des axes (basé sur les 10 labels originaux)
-nb_scenarios = len(scenarios_labels)
-angles_scenarios = np.linspace(0, 360, nb_scenarios, endpoint=False)
-
-# on ferme la boucle pour le tracé (on répète le 1er score à la fin)
+# On ferme la boucle pour le tracé
 scores_plot = scores + [scores[0]]
+angles_scenarios = np.linspace(0, 360, len(scenarios), endpoint=False)
 angles_plot = list(angles_scenarios) + [360]
+labels_plot = scenarios_labels + [scenarios_labels[0]]
 
 # Fonction pour générer un cercle lisse (100 points)
 def get_circle_points(radius):
@@ -581,7 +671,7 @@ synthese_4.add_trace(go.Scatterpolar(
     r=r_neutre,
     theta=t_circle,
     fill='toself',
-    fillcolor="rgba(255, 229, 153, 1)",
+    fillcolor="rgba(255, 229, 153, 1)", # jaune 
     line=dict(width=0),
     marker=dict(opacity=0), # Supprime les points
     hoverinfo='skip',
@@ -612,12 +702,31 @@ synthese_4.add_trace(go.Scatterpolar(
     fillcolor="rgba(31, 119, 180, 0.3)"
 ))
 
+# rajouter des axes pour visualiser les quadrants
+synthese_4.add_trace(go.Scatterpolar(
+    r=[100, 100],
+    theta=[90, 270],
+    mode='lines',
+    line=dict(color="rgba(0,0,0,0.2)", width=2, dash='dot'),
+    hoverinfo='skip',
+    showlegend=False
+))
+
+synthese_4.add_trace(go.Scatterpolar(
+    r=[100, 100],
+    theta=[0, 180],
+    mode='lines',
+    line=dict(color="rgba(0,0,0,0.2)", width=2, dash='dot'),
+    hoverinfo='skip',
+    showlegend=False
+))
+
 synthese_4.update_layout(
-    title="<b>Radar de Robustesse</b>",
+    title="<b>Antifragilité et les Quatre Quadrants </b>",
     showlegend=False,
     height=400,
     polar=dict(
-        bgcolor="rgba(182, 215, 168, 1)", # Fond vert (Antifragile)
+        bgcolor="rgba(182, 215, 168, 1)", # Fond vert (Antifragile) 
         radialaxis=dict(
             visible=False,           # On le réactive pour voir la grille
             range=[0, 100]
@@ -631,7 +740,7 @@ synthese_4.update_layout(
             showgrid=False
         )
     ),
-    margin=dict(l=50, r=50, t=50, b=50)
+    margin=dict(l=20, r=20, t=50, b=50)
 )
 
 ### KPIs en haut ###
@@ -687,7 +796,7 @@ with col2:
     st.plotly_chart(synthese_2, use_container_width=True)
 
 st.markdown("<hr style='margin: 0px 0px 15px 0px; border: 1px solid #f0f2f6;'>", unsafe_allow_html=True)
-col3, col4 = st.columns([1.4, 1.1])
+col3, col4 = st.columns([1.0, 1.1])
 
 with col3:
     if not df_delta.empty:
@@ -695,5 +804,6 @@ with col3:
     else:
         # Si c'est vide (première date), on affiche un petit message discret
         st.info("Sélectionnez une date ultérieure pour voir les mouvements par rapport au mois précédent.")
+
 with col4:
     st.plotly_chart(synthese_4, use_container_width=True)
