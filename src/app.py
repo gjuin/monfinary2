@@ -19,29 +19,28 @@ st.markdown("""
         margin-bottom: -12px !important;
     }
 
-    /* 2. TEXTE DU SLIDER DATE ("Faites glisser...") */
+    /* 2. TEXTE DU SLIDER DATE */
     [data-testid="stWidgetLabel"] p, 
     [data-testid="stSlider"] label {
         font-size: 13px !important;
         line-height: 1.2 !important;
     }
 
-    /* 3. CASES À COCHER (Portefeuilles) */
-    [data-testid="stCheckbox"] {
-        margin-bottom: -5px !important;  /* On réduit moins agressivement ici */
+    /* 3. CASES À COCHER (OPTIONS uniquement) */
+    [data-testid="stSidebarUserContent"] div.stCheckbox {
+        margin-bottom: -5px !important;
         padding-top: 2px !important;
     }
-    [data-testid="stCheckbox"] label p {
+    [data-testid="stSidebarUserContent"] div.stCheckbox label p {
         font-size: 13px !important;
-        line-height: 1.4 !important; /* Ajoute un peu d'espace entre le texte et la case */
+        line-height: 1.4 !important;
     }
     
-    /* 4. TEXTE DU SELECTBOX (Dimensions d'allocation) */
+    /* 4. SELECTBOX (Allocation) */
     [data-testid="stSelectbox"] label p,
     [data-testid="stSelectbox"] div[data-testid="stMarkdownContainer"] p {
         font-size: 13px !important;
     }
-    /* Taille du texte à l'intérieur du menu déroulant une fois sélectionné */
     [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
         font-size: 12px !important;
         padding-top: 2px !important;
@@ -49,56 +48,113 @@ st.markdown("""
         min-height: 30px !important;
     }
 
-    /* 5. Dividers compacts */
+    /* 5. MULTISELECT COMPACT (Portefeuilles) */
+    [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] {
+    margin-bottom: -8px !important;
+    }
+    [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] > div {
+    font-size: 11px !important;
+    }
+    [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] div[data-baseweb="select"] > div {
+    font-size: 11px !important;
+    min-height: 32px !important;
+    }
+
+    /* Tags sélectionnés : plus compacts et sur plusieurs colonnes */
+    [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] span[data-baseweb="tag"] {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+    margin: 2px !important;
+    height: auto !important;
+    min-height: 20px !important;
+    }
+
+    /* Conteneur des tags : permet le wrap sur plusieurs lignes */
+    [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] > div > div {
+    flex-wrap: wrap !important;
+    gap: 2px !important;
+    }
+
+    /* Icône de fermeture (X) dans les tags */
+    [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] span[data-baseweb="tag"] svg {
+    width: 12px !important;
+    height: 12px !important;
+    }
+
+    /* Options dans le dropdown */
+    [data-testid="stSidebarUserContent"] [data-baseweb="menu"] li {
+    font-size: 11px !important;
+    padding: 4px 8px !important;
+    min-height: 28px !important;
+    }
+
+    /* 6. Dividers compacts */
     [data-testid="stSidebarUserContent"] hr {
         margin-top: 12px !important;
         margin-bottom: 12px !important;
     }
 
-    /* 6. REMONTÉE SYNCHRONISÉE SIDEBAR & CONTENU */
-    /* On applique la même marge négative aux deux blocs parents */
+    /* 7. REMONTÉE SYNCHRONISÉE SIDEBAR & CONTENU */
     .stMain, [data-testid="stSidebar"] {
         margin-top: -3.5rem !important;
     }
-
-    /* On nettoie le Header pour qu'il ne bloque pas la remontée */
     [data-testid="stHeader"] {
         height: 0px !important;
         background: transparent !important;
     }
 
-    /* 7. AJUSTEMENT INTERNE DES CONTENEURS */
-
-    /* Côté Centre : On supprime les marges du premier bloc de KPIs */
+    /* 8. AJUSTEMENT INTERNE DES CONTENEURS */
     .stApp [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:first-child {
         margin-top: 0rem !important;
         padding-top: 2rem !important;
     }
-
-    /* Côté Sidebar : On ajuste l'espace interne */
     [data-testid="stSidebarUserContent"] {
         padding-top: 0rem !important;
         margin-top: -2.5em !important; 
     }
-
-    /* Nettoyage du conteneur de graphiques */
     div.block-container {
-        padding-top: 1rem !important; /* Un peu d'air sous le haut de l'écran */
+        padding-top: 1rem !important;
         max-width: 95% !important;
     }
 
-    /* 8. BOUTON ICONE QUADRANTS */
+    /* 9. BOUTON ICONE QUADRANTS */
     [data-testid="stSidebarUserContent"] button[kind="secondary"] {
-    padding: 2px 8px !important;
-    min-height: 28px !important;
-    font-size: 16px !important;
+        padding: 2px 8px !important;
+        min-height: 28px !important;
+        font-size: 16px !important;
     }
 
-    [data-testid="stSidebarUserContent"] hr + div {
-    margin-top: -8px !important;
-    }
+    /* 10. HARMONISATION DES TITRES DE SECTION */
+[data-testid="stSidebarUserContent"] [data-testid="stMarkdownContainer"] p {
+    margin-bottom: 12px !important;
+}
 
- 
+/* 13. UNIFORMISATION DES ESPACEMENTS APRÈS TITRES */
+/* Slider DATE : ajuster l'espace au-dessus */
+[data-testid="stSidebarUserContent"] [data-testid="stSlider"] {
+    margin-top: 0px !important;
+}
+
+/* Label du slider (sous-titre "Faites glisser...") */
+[data-testid="stSidebarUserContent"] [data-testid="stSlider"] label {
+    margin-top: 4px !important;
+}
+
+/* Multiselect PORTEFEUILLE : ajuster l'espace au-dessus */
+[data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] {
+    margin-top: 0px !important;
+    margin-bottom: 0px !important;
+}
+
+/* Selectbox ALLOCATION : ajuster l'espace au-dessus */
+[data-testid="stSidebarUserContent"] [data-testid="stSelectbox"] {
+    margin-top: 0px !important;
+}
+
+/* Toggle/Checkbox OPTIONS : ajuster l'espace au-dessus */
+[data-testid="stSidebarUserContent"] label[data-testid="stWidgetLabel"] {
+    margin-top: 2px !important;
+}
 
     </style>
     """, unsafe_allow_html=True)
@@ -318,38 +374,38 @@ CONFIG_STYLES = {
 ##### 5. Création de l'UI
 # Item 1 - Slider date
 liste_dates_obj = sorted(df_valo['Date'].unique()) 
-liste_dates_str = [d.strftime('%d/%m/%Y') for d in liste_dates_obj] # conversion en string
+liste_dates_str = [d.strftime('%d/%m/%Y') for d in liste_dates_obj]
 
-st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 2px;'>DATE ⚙️</ :", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 8px;'>DATE ⚙️</p>", unsafe_allow_html=True)
 date_selectionnee_fmt = st.sidebar.select_slider(
     "Faites glisser pour changer de date :",
     options=liste_dates_str,
-    value=liste_dates_str[-1] # Par défaut, on se place sur la date la plus récente (à droite)
+    value=liste_dates_str[-1]
 )
 
 date_cible = pd.to_datetime(date_selectionnee_fmt, dayfirst=True).date()
 
 #  Item 2 - Filtre de portefeuille (multiselect)
 st.sidebar.divider()
-st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 2px;'>PORTEFEUILLES 🗂️</ :", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 8px;'>PORTEFEUILLES 🗂️</p>", unsafe_allow_html=True)
 
-portefeuilles_selectionnes = [] # On crée une liste vide pour stocker les choix
-liste_portefeuilles_dispo = sorted(df_valo['Portefeuille'].unique()) # On boucle sur chaque portefeuille unique pour créer sa case à cocher
+liste_portefeuilles_dispo = sorted(df_valo['Portefeuille'].unique())
 
-for p in liste_portefeuilles_dispo:
-    # On crée la checkbox. 'value=True' permet de les cocher par défaut
-    if st.sidebar.checkbox(p, value=True, key=f"check_{p}"):
-        portefeuilles_selectionnes.append(p)
+portefeuilles_selectionnes = st.sidebar.multiselect(
+    "Sélectionner :",
+    options=liste_portefeuilles_dispo,
+    default=liste_portefeuilles_dispo,
+    label_visibility="collapsed"
+)
 
 #  Item 3 - Filtrer l'allocation selon la sous-catégorie
 st.sidebar.divider()
-st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 2px;'>ALLOCATION 📊</ :", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 8px;'>ALLOCATION 📊</p>", unsafe_allow_html=True)
 
 ordre_dimensions = ["Superclasse d'actif", "Classe d'actif", "Géo", "Type de produit"]
 
 dimensions_disponibles = [d for d in ordre_dimensions if d not in ["Sous-jacent", "Secteur"]]
 
-# On définit l'index par défaut sur "Superclasse d'actif" s'il existe
 try:
     default_index = dimensions_disponibles.index("Superclasse d'actif")
 except ValueError:
@@ -363,12 +419,12 @@ dimension_choisie = st.sidebar.selectbox(
 
 # Item 4 - Information Quadrant 
 st.sidebar.divider()
-
+st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 0px;'>INFOS ℹ️ </p>", unsafe_allow_html=True)
 # Créer une ligne avec icône cliquable + texte
 col_icon, col_text = st.sidebar.columns([0.15, 0.85])
 
 with col_icon:
-    if st.button("ℹ️", key="btn_quadrant_info", help="Comprendre les quadrants"):
+    if st.button(" ", key="btn_quadrant_info"):
         show_help_quadrants()
 
 with col_text:
@@ -379,12 +435,12 @@ with col_text:
 
 #  Item 5 - Exclure ou non les versements dans synthese_3
 st.sidebar.divider()
+st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 8px;'>OPTIONS ⚡</p>", unsafe_allow_html=True)
 exclure_versements = st.sidebar.toggle("Exclure les versements 💸", value=False)
 
 #  Item 6 - ajout d'un mode discret
-st.sidebar.divider()
+# (pas de divider ici, on reste dans la section OPTIONS)
 mode_discret = st.sidebar.checkbox("Mode discret 🔒", value=False)
-
 
 
 ##### 6. Interface et Graphique
