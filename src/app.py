@@ -118,43 +118,39 @@ st.markdown("""
     }
 
     /* 9. BOUTON ICONE QUADRANTS */
-    [data-testid="stSidebarUserContent"] button[kind="secondary"] {
-        padding: 2px 8px !important;
-        min-height: 28px !important;
-        font-size: 16px !important;
+    
+    
+    /* 10. HARMONISATION DES TITRES DE SECTION */
+    [data-testid="stSidebarUserContent"] [data-testid="stMarkdownContainer"] p {
+    margin-bottom: 12px !important;
     }
 
-    /* 10. HARMONISATION DES TITRES DE SECTION */
-[data-testid="stSidebarUserContent"] [data-testid="stMarkdownContainer"] p {
-    margin-bottom: 12px !important;
-}
-
-/* 13. UNIFORMISATION DES ESPACEMENTS APRÈS TITRES */
-/* Slider DATE : ajuster l'espace au-dessus */
-[data-testid="stSidebarUserContent"] [data-testid="stSlider"] {
+    /* 13. UNIFORMISATION DES ESPACEMENTS APRÈS TITRES */
+    /* Slider DATE : ajuster l'espace au-dessus */
+    [data-testid="stSidebarUserContent"] [data-testid="stSlider"] {
     margin-top: 0px !important;
-}
+    }
 
-/* Label du slider (sous-titre "Faites glisser...") */
-[data-testid="stSidebarUserContent"] [data-testid="stSlider"] label {
+    /* Label du slider (sous-titre "Faites glisser...") */
+    [data-testid="stSidebarUserContent"] [data-testid="stSlider"] label {
     margin-top: 4px !important;
-}
+    }
 
-/* Multiselect PORTEFEUILLE : ajuster l'espace au-dessus */
-[data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] {
+    /* Multiselect PORTEFEUILLE : ajuster l'espace au-dessus */
+    [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] {
     margin-top: 0px !important;
     margin-bottom: 0px !important;
-}
+    }
 
-/* Selectbox ALLOCATION : ajuster l'espace au-dessus */
-[data-testid="stSidebarUserContent"] [data-testid="stSelectbox"] {
+    /* Selectbox ALLOCATION : ajuster l'espace au-dessus */
+    [data-testid="stSidebarUserContent"] [data-testid="stSelectbox"] {
     margin-top: 0px !important;
-}
+    }
 
-/* Toggle/Checkbox OPTIONS : ajuster l'espace au-dessus */
-[data-testid="stSidebarUserContent"] label[data-testid="stWidgetLabel"] {
+    /* Toggle/Checkbox OPTIONS : ajuster l'espace au-dessus */
+    [data-testid="stSidebarUserContent"] label[data-testid="stWidgetLabel"] {
     margin-top: 2px !important;
-}
+    }
 
     </style>
     """, unsafe_allow_html=True)
@@ -315,7 +311,8 @@ ordre_portefeuille = ["Livret A",
                       "Airliquide.fr",
                       "PEE",
                       "PEA",
-                      "AV",
+                      "AV Bourso",
+                      "AV Mutavie",
                       "CTO",
                       "Wallet"]
 
@@ -327,7 +324,8 @@ couleurs_portefeuille = {
     "Airliquide.fr": "#9fc5e8",
     "PEE": "#e06666",
     "PEA": "#cc0000",
-    "AV": "#c27ba0", 
+    "AV Bourso": "#c27ba0",
+    "AV Mutavie": "#d0d0d0",
     "CTO": "#f1c232",
     "Wallet": "#ff9900"
 }
@@ -376,7 +374,7 @@ CONFIG_STYLES = {
 liste_dates_obj = sorted(df_valo['Date'].unique()) 
 liste_dates_str = [d.strftime('%d/%m/%Y') for d in liste_dates_obj]
 
-st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 8px;'>DATE ⚙️</p>", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 8px;'>DATE 📅</p>", unsafe_allow_html=True)
 date_selectionnee_fmt = st.sidebar.select_slider(
     "Faites glisser pour changer de date :",
     options=liste_dates_str,
@@ -419,19 +417,17 @@ dimension_choisie = st.sidebar.selectbox(
 
 # Item 4 - Information Quadrant 
 st.sidebar.divider()
-st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 0px;'>INFOS ℹ️ </p>", unsafe_allow_html=True)
-# Créer une ligne avec icône cliquable + texte
-col_icon, col_text = st.sidebar.columns([0.15, 0.85])
+# 1. Le titre et la ligne de texte en un seul bloc Markdown pour contrôler l'espace
+st.sidebar.markdown("""
+    <div style='margin-bottom: -15px;'>
+        <p style='font-size: 1.1em; font-weight: bold; color: transparent; margin-bottom: 10px;'>INFOS ℹ️</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-with col_icon:
-    if st.button(" ", key="btn_quadrant_info"):
-        show_help_quadrants()
-
-with col_text:
-    st.markdown(
-        "<p style='font-size: 13px; margin: 0; padding-top: 4px; color: rgb(250, 250, 250);'>Comprendre les quadrants</p>", 
-        unsafe_allow_html=True
-    )
+# 2. Le bouton positionné par-dessus
+# On utilise le CSS pour le remonter exactement au niveau du texte "Comprendre..."
+if st.sidebar.button("LES QUADRANTS ℹ️", key="btn_quadrant_info", help="Ouvrir l'aide"):
+    show_help_quadrants()
 
 #  Item 5 - Exclure ou non les versements dans synthese_3
 st.sidebar.divider()
@@ -502,12 +498,12 @@ synthese_1.update_layout(
     #xaxis=dict(title="", showgrid=False, tickangle=-40),
     legend=dict(
         orientation="v",
-        yanchor="top", y=0.8, 
+        yanchor="top", y=0.9, 
         xanchor="right", x=-0.05,
         traceorder ="reversed", #normal
         title=""),
     margin=dict(l=50, r=50, t=50, b=50),
-    height= 400,
+    height= 425,
     hovermode="closest" # uniquement où je pointe
 )
 synthese_1.update_traces(
@@ -566,7 +562,7 @@ synthese_2.update_layout(
         xanchor="right", x=-0.05,
         title=""),
     margin=dict(l=50, r=50, t=50, b=50),
-    height=400
+    height=425
 )
 
 ### Synthese 3 - les mouvements du patrimoine T - T-1 ### 
@@ -659,7 +655,7 @@ if idx_actuel > 0:
         separators=", ",
         showlegend=False,
         margin=dict(l=50, r=50, t=50, b=50),
-        height=400
+        height=425
     )
 else:
     # Si c'est la première date, on s'assure que df_delta est vide pour le message final
@@ -668,7 +664,7 @@ else:
 
 ### Synthese 4 - l'antifragilité  ### 
 df_map_filtree = df_map[df_map['Dimension'].isin(['Géo','Secteur',"Classe d'actif"])] # on ne garde que ces 3 dimensions
-df_radar = pd.merge(df_now, df_map_filtree, on='Produit') # merge avec la valo à la date voulue et aux portefeuilles choisis
+df_radar = pd.merge(df_map_filtree, df_now, on='Produit') # merge avec la valo à la date voulue et aux portefeuilles choisis
 df_radar = pd.merge(df_radar, df_scenar, on=['Dimension', 'Sous-Catégorie']) # on enrichit avec les scores des dimensions par scénario
 
 df_radar['Valo_Ponderee'] = df_radar['Valeur'] * df_radar['Pourcentage'] # un produit peut être doublé voir triplé car ventilé par dimension
@@ -801,7 +797,6 @@ synthese_4.add_trace(go.Scatterpolar(
 synthese_4.update_layout(
     title="<b>Antifragilité et les Quatre Quadrants </b>",
     showlegend=False,
-    height=400,
     polar=dict(
         bgcolor="rgba(182, 215, 168, 1)", # Fond vert (Antifragile) 
         radialaxis=dict(
@@ -817,7 +812,8 @@ synthese_4.update_layout(
             showgrid=False
         )
     ),
-    margin=dict(l=20, r=20, t=50, b=50)
+    margin=dict(l=20, r=20, t=50, b=50),
+    height=425
 )
 
 ### KPIs en haut ###
@@ -884,3 +880,8 @@ with col3:
 
 with col4:
     st.plotly_chart(synthese_4, use_container_width=True)
+
+
+
+st.write("### Données brutes du Radar")
+st.dataframe(df_radar[df_radar['Portefeuille'] == 'PEE'], use_container_width=True)
