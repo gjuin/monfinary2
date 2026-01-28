@@ -667,60 +667,73 @@ df_map_filtree = df_map[df_map['Dimension'].isin(['Géo','Secteur',"Classe d'act
 df_radar = pd.merge(df_map_filtree, df_now, on='Produit') # merge avec la valo à la date voulue et aux portefeuilles choisis
 df_radar = pd.merge(df_radar, df_scenar, on=['Dimension', 'Sous-Catégorie']) # on enrichit avec les scores des dimensions par scénario
 
+categories_exclues = ['Obligation CT', 'Obligation MT', 'Obligation LT', 'Cash 0%', 'Cash Rémunéré','Crypto','Métaux','Or']
+df_radar = df_radar[~((df_radar['Dimension'] == 'Secteur') & 
+      (df_radar['Sous-Catégorie'].isin(categories_exclues)))
+      ]
+
 df_radar['Valo_Ponderee'] = df_radar['Valeur'] * df_radar['Pourcentage'] # un produit peut être doublé voir triplé car ventilé par dimension
 
-# Calcul des scores par scénario
-poids_dimensions = {
-    "Classe d'actif": 0.50,
-    "Secteur": 0.25,
-    "Géo": 0.25
-}
+# Définir une règle de gestion sur le poids des dimensions
+df_nb_dim = df_radar.groupby(['Plateforme', 'Produit'])['Dimension'].nunique().reset_index(name='nb_dim')
 
-resultats_radar = {}
+df_radar = pd.merge(df_radar, df_nb_dim, on= ['Plateforme', 'Produit'] )
+
+def attribuer_poids(row):
+    d = row['Dimension']
+    n = row['nb_dim']
+    
+    # Cas où le produit est sur 3 dimensions
+    if n == 3:
+        poids = {"Classe d'actif": 0.50, "Secteur": 0.25, "Géo": 0.25}
+        return poids.get(d, 0)
+    
+    # Cas où le produit est sur 2 dimensions (Classe d'actif + Géo ou Secteur)
+    elif n == 2:
+        poids = {"Classe d'actif": 0.70, "Géo": 0.30, "Secteur": 0.30}
+        return poids.get(d, 0)
+    
+    # Cas par défaut (1 seule dimension)
+    return 1.0
+
+# On applique la règle sur chaque ligne
+df_radar['poids_dimension'] = df_radar.apply(attribuer_poids, axis=1)
+
+
+# calcul du score par produit et dimension
 scenarios = df_scenar.columns[2:12]
+df_prod = df_radar[['Produit', 'Dimension', 'Sous-Catégorie', 'Portefeuille', 'Plateforme', 'Valeur', 'Valo_Ponderee','nb_dim']].copy()
+for scenario in scenarios:
+    df_prod[scenario] = (
+        df_radar['Pourcentage'] * df_radar['poids_dimension'] * df_radar[scenario]
+    )
+
+
+# la somme de Valo_Ventilee = l'épargne totale sur les portefeuilles choisis
+df_prod['Valo_Ventilee'] = df_prod['Valo_Ponderee'] / df_prod['nb_dim']
+
+
+# calcul du score par produit
+cols_to_sum = list(scenarios) + ['Valo_Ventilee']
+df_prod_agg = df_prod.groupby(['Produit', 'Portefeuille', 'Plateforme'], as_index=False)[cols_to_sum].sum()
+
+
+# calcul du score sur la sélection
+total_valo = df_prod_agg['Valo_Ventilee'].sum()
+moyenne_finale = []
+resultats_radar = []
+
 for s in scenarios:
-    scores_par_produit = []
-    poids_totaux_produits = []
+    # Calcul : Somme de (Score du produit * sa Valo) / Somme totale des Valo
+    weighted_score = (df_prod_agg[s] * df_prod_agg['Valo_Ventilee']).sum() / total_valo
+    moyenne_finale.append(weighted_score)
+    resultats_radar.append(50 + (weighted_score * 50)) # score normalisé de 0 à 100
 
-    # On itère par produit pour gérer le 70/30 individuellement
-    for produit in df_radar['Produit'].unique():
-        df_p = df_radar[df_radar['Produit'] == produit]
-        
-        # On vérifie quelles dimensions sont présentes pour ce produit
-        dims_presentes = df_p['Dimension'].unique()
-        
-        if "Secteur" not in dims_presentes or df_p[df_p['Dimension']=="Secteur"]['Sous-Catégorie'].iloc[0] in ["", "N/A"]:
-            poids_actuels = {"Classe d'actif": 0.70, "Géo": 0.30, "Secteur": 0.0}
-        else:
-            poids_actuels = {"Classe d'actif": 0.50, "Géo": 0.25, "Secteur": 0.25}
-            
-        score_produit = 0
-        poids_cumule_produit = 0
-        
-        for dim in ["Classe d'actif", "Géo", "Secteur"]:
-            df_p_dim = df_p[df_p['Dimension'] == dim]
-            if not df_p_dim.empty:
-                coeff = df_p_dim[s].iloc[0]
-                poids = poids_actuels[dim]
-                score_produit += coeff * poids
-                poids_cumule_produit += poids
-        
-        # Normalisation du score produit (au cas où une Géo manque aussi)
-        if poids_cumule_produit > 0:
-            score_final_produit = score_produit / poids_cumule_produit
-            # Pondération par la valeur réelle du produit dans le portefeuille
-            valo_relative = df_p['Valeur'].iloc[0] 
-            scores_par_produit.append(score_final_produit * valo_relative)
-            poids_totaux_produits.append(valo_relative)
-
-    # Moyenne finale du scénario
-    moyenne_finale = sum(scores_par_produit) / sum(poids_totaux_produits)
-    resultats_radar[s] = 50 + (moyenne_finale * 50)
 
 # Préparation au graphique
 # on met les résultats dans un table à 2 colonnes (label et score)
 scenarios_labels = [s.replace('_', ' ').title() for s in scenarios]
-scores = [resultats_radar[s] for s in scenarios]
+scores = resultats_radar
 
 # On ferme la boucle pour le tracé
 scores_plot = scores + [scores[0]]
@@ -883,5 +896,7 @@ with col4:
 
 
 
-st.write("### Données brutes du Radar")
-st.dataframe(df_radar[df_radar['Portefeuille'] == 'PEE'], use_container_width=True)
+#st.write("### Données brutes du Radar")
+#st.dataframe(df_prod_agg[df_prod_agg['Portefeuille'] == 'PEE'], use_container_width=True)
+#st.dataframe(scores, use_container_width=True)
+
