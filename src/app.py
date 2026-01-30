@@ -16,82 +16,106 @@ st.markdown("""
     <style>
     /* 1. Espace global entre widgets */
     [data-testid="stSidebarUserContent"] div.stElementContainer {
-        margin-bottom: -12px !important;
+        margin-bottom: -0.75rem !important;
     }
 
-    /* 2. TEXTE DU SLIDER DATE */
+    /* 2. 📅 TEXTE DU SLIDER DATE */
     [data-testid="stWidgetLabel"] p, 
     [data-testid="stSlider"] label {
-        font-size: 13px !important;
+        font-size: 0,813rem !important;
         line-height: 1.2 !important;
+        margin-top: 0rem !important;
     }
 
-    /* 3. CASES À COCHER (OPTIONS uniquement) */
-    [data-testid="stSidebarUserContent"] div.stCheckbox {
-        margin-bottom: -5px !important;
-        padding-top: 2px !important;
+    /* Label du slider (sous-titre "Faites glisser...") */
+    [data-testid="stSidebarUserContent"] [data-testid="stSlider"] label {
+    margin-top: 0.125rem !important;
     }
+
+    /* 3. ⚡ CASES À COCHER (OPTIONS uniquement) */
+    [data-testid="stSidebarUserContent"] div.stCheckbox {
+        margin-bottom: -0.313rem !important;
+        padding-top: 0.125rem !important;
+    }
+
     [data-testid="stSidebarUserContent"] div.stCheckbox label p {
-        font-size: 13px !important;
+        font-size: 0,813rem !important;
         line-height: 1.4 !important;
     }
     
-    /* 4. SELECTBOX (Allocation) */
-    [data-testid="stSelectbox"] label p,
-    [data-testid="stSelectbox"] div[data-testid="stMarkdownContainer"] p {
-        font-size: 13px !important;
-    }
-    [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
-        font-size: 12px !important;
-        padding-top: 2px !important;
-        padding-bottom: 2px !important;
-        min-height: 30px !important;
+    /* Toggle/Checkbox OPTIONS : ajuster l'espace au-dessus */
+    [data-testid="stSidebarUserContent"] label[data-testid="stWidgetLabel"] {
+    margin-top: 0.125rem !important;
     }
 
-    /* 5. MULTISELECT COMPACT (Portefeuilles) */
+    /* 4. 📊 SELECTBOX (Allocation) */
+    [data-testid="stSelectbox"] label p,
+    [data-testid="stSelectbox"] div[data-testid="stMarkdownContainer"] p {
+        font-size: 0,813rem !important;
+    }
+
+    [data-testid="stSidebarUserContent"] [data-testid="stMarkdownContainer"] p {
+    margin-bottom: 0.75rem !important;
+    margin-top: 0rem !important;
+    }
+
+    [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+        font-size: 0.75rem !important;
+        padding-top: 0.125rem !important;
+        padding-bottom: 0.125rem !important;
+        min-height: 1.875rem !important;
+    }
+
+    /* 5. 🗂️ MULTISELECT COMPACT (Portefeuilles) */
     [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] {
-    margin-bottom: -8px !important;
+    margin-bottom: -0.5rem !important;
     }
     [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] > div {
-    font-size: 11px !important;
+    font-size: 0.688rem !important;
     }
     [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] div[data-baseweb="select"] > div {
-    font-size: 11px !important;
-    min-height: 32px !important;
+    font-size: 0.688rem !important;
+    min-height: 2rem !important;
     }
 
     /* Tags sélectionnés : plus compacts et sur plusieurs colonnes */
     [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] span[data-baseweb="tag"] {
-    font-size: 10px !important;
-    padding: 2px 6px !important;
-    margin: 2px !important;
+    font-size: 0.625rem !important;
+    padding: 0.125rem 0.375rem !important;
+    margin: 0.125rem !important;
     height: auto !important;
-    min-height: 20px !important;
+    min-height: 1.25rem !important;
     }
 
     /* Conteneur des tags : permet le wrap sur plusieurs lignes */
     [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] > div > div {
     flex-wrap: wrap !important;
-    gap: 2px !important;
+    gap: 0.125rem !important;
     }
 
     /* Icône de fermeture (X) dans les tags */
     [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] span[data-baseweb="tag"] svg {
-    width: 12px !important;
-    height: 12px !important;
+    width: 0.75rem !important;
+    height: 0.75rem !important;
     }
 
     /* Options dans le dropdown */
     [data-testid="stSidebarUserContent"] [data-baseweb="menu"] li {
-    font-size: 11px !important;
-    padding: 4px 8px !important;
-    min-height: 28px !important;
+    font-size: 0.625rem !important;
+    padding: 0.25rem 0.5rem !important;
+    min-height: 1.75rem !important;
+    }
+
+    /* ajuster l'espace au-dessus */
+    [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] {
+    margin-top: 0rem !important;
+    margin-bottom: 0rem !important;
     }
 
     /* 6. Dividers compacts */
     [data-testid="stSidebarUserContent"] hr {
-        margin-top: 12px !important;
-        margin-bottom: 12px !important;
+        margin-top: 0.75rem !important;
+        margin-bottom: 0.75rem !important;
     }
 
     /* 7. REMONTÉE SYNCHRONISÉE SIDEBAR & CONTENU */
@@ -99,7 +123,7 @@ st.markdown("""
         margin-top: -3.5rem !important;
     }
     [data-testid="stHeader"] {
-        height: 0px !important;
+        height: 0rem !important;
         background: transparent !important;
     }
 
@@ -118,78 +142,60 @@ st.markdown("""
     }
 
     /* 9. BOUTON ICONE QUADRANTS */
-    
-    
-    /* 10. HARMONISATION DES TITRES DE SECTION */
-    [data-testid="stSidebarUserContent"] [data-testid="stMarkdownContainer"] p {
-    margin-bottom: 12px !important;
-    }
 
     /* 13. UNIFORMISATION DES ESPACEMENTS APRÈS TITRES */
-    /* Slider DATE : ajuster l'espace au-dessus */
-    [data-testid="stSidebarUserContent"] [data-testid="stSlider"] {
-    margin-top: 0px !important;
-    }
-
-    /* Label du slider (sous-titre "Faites glisser...") */
-    [data-testid="stSidebarUserContent"] [data-testid="stSlider"] label {
-    margin-top: 4px !important;
-    }
-
-    /* Multiselect PORTEFEUILLE : ajuster l'espace au-dessus */
-    [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] {
-    margin-top: 0px !important;
-    margin-bottom: 0px !important;
-    }
-
-    /* Selectbox ALLOCATION : ajuster l'espace au-dessus */
-    [data-testid="stSidebarUserContent"] [data-testid="stSelectbox"] {
-    margin-top: 0px !important;
-    }
-
-    /* Toggle/Checkbox OPTIONS : ajuster l'espace au-dessus */
-    [data-testid="stSidebarUserContent"] label[data-testid="stWidgetLabel"] {
-    margin-top: 2px !important;
-    }
-
+    
     </style>
     """, unsafe_allow_html=True)
 
 # info sur les quadrants
-@st.dialog("Boussole de l'Antifragilité", width="large")
+@st.dialog("Comprendre les quadrants", width="large")
 def show_help_quadrants():
     st.markdown("""
     ### 🧭 Les 4 Régimes Économiques
-    L'économie oscille selon deux forces : l'**Inflation** et la **Croissance**. 
-    Chaque quadrant favorise des actifs spécifiques.
+    **Principe** : L'économie oscille selon deux forces : l'**Inflation** et la **Croissance**. \n
+    L'inflation est une mesure de l'évolution des prix, tandis que la croissance est une mesure de la valeur de l'accroissement du capital.
+    Ces deux forces peuvent evoluer independament, donnant ainsi 4 cas de figures possibles. 
+    Chaque quadrant favorise des actifs spécifiques. Ils offrent une grille de lecture macroeconomique de la finance et permettent a l'investisseur de se positionner. \n
+    \n
+    *Ce que vous payez c'est le prix, ce que vous achetez c'est la valeur.* - Warren Buffet
+    
+    \n
+    **Les cycles :**
     """)
     
     col_a, col_b = st.columns(2)
     with col_a:
         st.markdown("""
-        **🔥 Nord-Est : Inflationary Boom**
-        *Surchauffe, forte demande.*
-        * **Actifs :** Matières Premières, Or, Actions Énergie/Value.
+        **⚡ Nord-Ouest : Bust Inflationiste**
+        *Stagflation, hausse des coûts.*
+        * La croissance chute alors que l'inflation reste haute (choc d'offre). Les banques centrales sont bloquées : monter les taux tue la croissance, les baisser nourrit l'inflation.
+        * **Actifs :** Or, Cash, Obligations Courtes.
         
-        **❄️ Sud-Est : Disinflationary Boom**
-        *Croissance saine, "Goldilocks".*
-        * **Actifs :** Actions Tech, Nasdaq, Bitcoin.
+        **🌊 Sud-Ouest : Bust Déflationiste**
+        *Récession classique, déflation.*
+        * Contraction du PIB, hausse du chômage. La baisse de la demande brise les prix. Les taux chutent massivement.
+        * **Actifs :** Obligations Longues, Cash*
         """)
     with col_b:
         st.markdown("""
-        **⚡ Nord-Ouest : Inflationary Bust**
-        *Stagflation, hausse des coûts.*
-        * **Actifs :** Or, Cash, Obligations très courtes.
+        **🔥 Nord-Est : Boom Inflationiste**
+        *Surchauffe, forte demande.*
+        * L'économie tourne trop vite, les pénuries de main-d'œuvre et de matières premières poussent les prix. La demande excède l'offre. La banque centrale peut alors décider de monter les taux pour freiner la demande et ralentir l'économie.
+        * **Actifs :** Matières Premières, Energie, Or, Actions de Rareté, Immobilier.
         
-        **🌊 Sud-Ouest : Disinflationary Bust**
-        *Récession classique, déflation.*
-        * **Actifs :** Obligations d'État (LT), Cash, Santé.*
+        **❄️ Sud-Est : Boom Déflationiste**
+        *Croissance saine, "Goldilocks".*
+        * C'est le cycle typique de la croissance capitaliste : accroissement du capital et baisse des prix. Tout le monde s'enrichit. Les entreprises les plus innovantes dominent. 
+        * **Actifs :** Actions d'Efficacité, Bitcoin, Obligations Longues
         """)
+    
+    st.markdown("""
+    ### 🎯 Schéma des Transitions
+    """)
 
     # Schéma textuel
     st.code("""
-    #### 🔄 Schéma des Transitions
-
                    INFLATION (Nord)
                           ▲
           STAGFLATION     |    SURCHAUFFE
@@ -205,6 +211,18 @@ def show_help_quadrants():
                   DÉSINFLATION (Sud)
     """, language=None)
     
+    st.markdown("""
+    ### 🔄 Les Mécanismes de Transition & Rotations
+    L'économie ne reste jamais figée ; elle circule entre ces quadrants. Anticiper la bascule est la clé de la performance. \n
+    **A. La Surchauffe :** Passage de boom deflationiste a inflationsite
+    * **Le mécanisme :** L'économie tourne à plein régime, les pénuries apparaissent, les salaires montent.
+    * **Signes avant-coureurs :** Hausse des prix des intrants (energie, matieres premieres), plein emploi, courbes de taux qui se pentifient (yield curve).
+    * **Rotation :** Vendre les Actions d'Efficacite (tech, sensibles aux taux) pour acheter des Actions de Rarete (energie, matieres premieres)
+    
+    
+    
+    """)
+
     st.info("💡 **Conseil :** Si votre radar est équilibré sur les 4 quadrants, vous n'avez pas besoin de prédire la prochaine transition, votre patrimoine est prêt à l'absorber.")
 
 ##### 1. Connexion 
@@ -374,7 +392,7 @@ CONFIG_STYLES = {
 liste_dates_obj = sorted(df_valo['Date'].unique()) 
 liste_dates_str = [d.strftime('%d/%m/%Y') for d in liste_dates_obj]
 
-st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 8px;'>DATE 📅</p>", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 0.5rem;'>DATE 📅</p>", unsafe_allow_html=True)
 date_selectionnee_fmt = st.sidebar.select_slider(
     "Faites glisser pour changer de date :",
     options=liste_dates_str,
@@ -385,7 +403,7 @@ date_cible = pd.to_datetime(date_selectionnee_fmt, dayfirst=True).date()
 
 #  Item 2 - Filtre de portefeuille (multiselect)
 st.sidebar.divider()
-st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 8px;'>PORTEFEUILLES 🗂️</p>", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 0.5rem;'>PORTEFEUILLES 🗂️</p>", unsafe_allow_html=True)
 
 liste_portefeuilles_dispo = sorted(df_valo['Portefeuille'].unique())
 
@@ -398,7 +416,7 @@ portefeuilles_selectionnes = st.sidebar.multiselect(
 
 #  Item 3 - Filtrer l'allocation selon la sous-catégorie
 st.sidebar.divider()
-st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 8px;'>ALLOCATION 📊</p>", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 0.5rem;'>ALLOCATION 📊</p>", unsafe_allow_html=True)
 
 ordre_dimensions = ["Superclasse d'actif", "Classe d'actif", "Géo", "Type de produit"]
 
@@ -419,8 +437,8 @@ dimension_choisie = st.sidebar.selectbox(
 st.sidebar.divider()
 # 1. Le titre et la ligne de texte en un seul bloc Markdown pour contrôler l'espace
 st.sidebar.markdown("""
-    <div style='margin-bottom: -15px;'>
-        <p style='font-size: 1.1em; font-weight: bold; color: transparent; margin-bottom: 10px;'>INFOS ℹ️</p>
+    <div style='margin-bottom: -0.938rem;'>
+        <p style='font-size: 1.1em; font-weight: bold; color: transparent; margin-bottom: 0.625rem;'>INFOS ℹ️</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -431,7 +449,7 @@ if st.sidebar.button("LES QUADRANTS ℹ️", key="btn_quadrant_info", help="Ouvr
 
 #  Item 5 - Exclure ou non les versements dans synthese_3
 st.sidebar.divider()
-st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 8px;'>OPTIONS ⚡</p>", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 0.5rem;'>OPTIONS ⚡</p>", unsafe_allow_html=True)
 exclure_versements = st.sidebar.toggle("Exclure les versements 💸", value=False)
 
 #  Item 6 - ajout d'un mode discret
@@ -854,7 +872,7 @@ else:
 # Affichage des KPIs en ligne
 st.markdown(
     f"""
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 2px solid #f0f2f6; margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.625rem; border-bottom: 0.125rem solid #f0f2f6; margin-bottom: 1.25rem;">
         <div>
             <span style="color: gray; font-size: 0.8em; text-transform: uppercase;">Patrimoine Total</span><br>
             <span style="font-size: 1.5em; font-weight: 700; color: #1f77b4;">{txt_patrimoine}</span>
@@ -878,21 +896,20 @@ col1, col2 = st.columns([1.4, 1.1])
 with col1:
     st.plotly_chart(synthese_1, use_container_width=True)
 with col2:
-    # Si le donut est trop bas, on peut forcer une marge négative ici
-    st.plotly_chart(synthese_2, use_container_width=True)
-
-st.markdown("<hr style='margin: 0px 0px 15px 0px; border: 1px solid #f0f2f6;'>", unsafe_allow_html=True)
-col3, col4 = st.columns([1.0, 1.1])
-
-with col3:
     if not df_delta.empty:
         st.plotly_chart(synthese_3, use_container_width=True) # Affichage sur toute la largeur sous les deux autres graphiques
     else:
         # Si c'est vide (première date), on affiche un petit message discret
         st.info("Sélectionnez une date ultérieure pour voir les mouvements par rapport au mois précédent.")
 
-with col4:
+st.markdown("<hr style='margin: 0rem 0rem 0.938rem 0rem; border: 0.063rem solid #f0f2f6;'>", unsafe_allow_html=True)
+col3, col4 = st.columns([1.4, 1.1])
+
+with col3:
     st.plotly_chart(synthese_4, use_container_width=True)
+
+with col4:
+    st.plotly_chart(synthese_2, use_container_width=True)
 
 
 
