@@ -18,18 +18,20 @@ st.markdown("""
     [data-testid="stSidebarUserContent"] div.stElementContainer {
         margin-bottom: -0.75rem !important;
     }
-
-    /* 2. 📅 TEXTE DU SLIDER DATE */
-    [data-testid="stWidgetLabel"] p, 
-    [data-testid="stSlider"] label {
-        font-size: 0,813rem !important;
-        line-height: 1.2 !important;
-        margin-top: 0rem !important;
+    
+    [data-testid="stSidebarUserContent"] label[data-testid="stWidgetLabel"] {
+    margin-top: 0.125rem !important;
     }
 
-    /* Label du slider (sous-titre "Faites glisser...") */
-    [data-testid="stSidebarUserContent"] [data-testid="stSlider"] label {
-    margin-top: 0.125rem !important;
+    [data-testid="stSidebarUserContent"] [data-testid="stMarkdownContainer"] p {
+    margin-bottom: 0.75rem !important;
+    margin-top: 0rem !important;
+    }
+
+    /* 2. 📅 SLIDER DATE */
+    [data-testid="stWidgetLabel"] p, 
+    [data-testid="stSlider"] label {
+        line-height: 1.0 !important;
     }
 
     /* 3. ⚡ CASES À COCHER (OPTIONS uniquement) */
@@ -39,45 +41,17 @@ st.markdown("""
     }
 
     [data-testid="stSidebarUserContent"] div.stCheckbox label p {
-        font-size: 0,813rem !important;
-        line-height: 1.4 !important;
+        line-height: 1.0 !important;
     }
     
-    /* Toggle/Checkbox OPTIONS : ajuster l'espace au-dessus */
-    [data-testid="stSidebarUserContent"] label[data-testid="stWidgetLabel"] {
-    margin-top: 0.125rem !important;
-    }
-
     /* 4. 📊 SELECTBOX (Allocation) */
-    [data-testid="stSelectbox"] label p,
-    [data-testid="stSelectbox"] div[data-testid="stMarkdownContainer"] p {
-        font-size: 0,813rem !important;
-    }
-
-    [data-testid="stSidebarUserContent"] [data-testid="stMarkdownContainer"] p {
-    margin-bottom: 0.75rem !important;
-    margin-top: 0rem !important;
-    }
-
     [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
         font-size: 0.75rem !important;
         padding-top: 0.125rem !important;
         padding-bottom: 0.125rem !important;
-        min-height: 1.875rem !important;
     }
 
     /* 5. 🗂️ MULTISELECT COMPACT (Portefeuilles) */
-    [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] {
-    margin-bottom: -0.5rem !important;
-    }
-    [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] > div {
-    font-size: 0.688rem !important;
-    }
-    [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] div[data-baseweb="select"] > div {
-    font-size: 0.688rem !important;
-    min-height: 2rem !important;
-    }
-
     /* Tags sélectionnés : plus compacts et sur plusieurs colonnes */
     [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] span[data-baseweb="tag"] {
     font-size: 0.625rem !important;
@@ -95,27 +69,27 @@ st.markdown("""
 
     /* Icône de fermeture (X) dans les tags */
     [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] span[data-baseweb="tag"] svg {
-    width: 0.75rem !important;
-    height: 0.75rem !important;
+    width: 0.65rem !important;
+    height: 0.65rem !important;
     }
 
     /* Options dans le dropdown */
-    [data-testid="stSidebarUserContent"] [data-baseweb="menu"] li {
-    font-size: 0.625rem !important;
-    padding: 0.25rem 0.5rem !important;
-    min-height: 1.75rem !important;
+    [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] > div
+        font-size: 0.75rem !important;
+        padding-top: 0.125rem !important;
+        padding-bottom: 0.125rem !important;
     }
 
     /* ajuster l'espace au-dessus */
     [data-testid="stSidebarUserContent"] [data-testid="stMultiSelect"] {
-    margin-top: 0rem !important;
+    margin-top: 0.12rem !important;
     margin-bottom: 0rem !important;
     }
 
     /* 6. Dividers compacts */
     [data-testid="stSidebarUserContent"] hr {
         margin-top: 0.75rem !important;
-        margin-bottom: 0.75rem !important;
+        margin-bottom: 1.25rem !important;
     }
 
     /* 7. REMONTÉE SYNCHRONISÉE SIDEBAR & CONTENU */
@@ -138,7 +112,7 @@ st.markdown("""
     }
     div.block-container {
         padding-top: 1rem !important;
-        max-width: 95% !important;
+        max-width: 99% !important;
     }
 
     /* 9. BOUTON ICONE QUADRANTS */
@@ -170,24 +144,24 @@ def show_help_quadrants():
         **⚡ Nord-Ouest : Bust Inflationiste**
         *Stagflation, hausse des coûts.*
         * La croissance chute alors que l'inflation reste haute (choc d'offre). Les banques centrales sont bloquées : monter les taux tue la croissance, les baisser nourrit l'inflation.
-        * **Actifs :** Or, Cash, Obligations Courtes.
+        * **Actifs :** Or, Cash, Obligations Courtes, Actions Défensives (Agro, Santé)
         
         **🌊 Sud-Ouest : Bust Déflationiste**
         *Récession classique, déflation.*
         * Contraction du PIB, hausse du chômage. La baisse de la demande brise les prix. Les taux chutent massivement.
-        * **Actifs :** Obligations Longues, Cash*
+        * **Actifs :** Obligations Longues, Cash, Actions Défensives (Agro, Santé)
         """)
     with col_b:
         st.markdown("""
         **🔥 Nord-Est : Boom Inflationiste**
         *Surchauffe, forte demande.*
         * L'économie tourne trop vite, les pénuries de main-d'œuvre et de matières premières poussent les prix. La demande excède l'offre. La banque centrale peut alors décider de monter les taux pour freiner la demande et ralentir l'économie.
-        * **Actifs :** Matières Premières, Energie, Or, Actions de Rareté, Immobilier.
+        * **Actifs :** Matières Premières, Energie, Or, Actions de Rareté (Mines, Energie), Immobilier.
         
         **❄️ Sud-Est : Boom Déflationiste**
         *Croissance saine, "Goldilocks".*
         * C'est le cycle typique de la croissance capitaliste : accroissement du capital et baisse des prix. Tout le monde s'enrichit. Les entreprises les plus innovantes dominent. 
-        * **Actifs :** Actions d'Efficacité, Bitcoin, Obligations Longues
+        * **Actifs :** Actions d'Efficacité (Tech, Croissance, Qualité, Cyclique - infra, industrie), Bitcoin, Obligations Longues
         """)
     
     st.markdown("""
@@ -214,13 +188,29 @@ def show_help_quadrants():
     st.markdown("""
     ### 🔄 Les Mécanismes de Transition & Rotations
     L'économie ne reste jamais figée ; elle circule entre ces quadrants. Anticiper la bascule est la clé de la performance. \n
-    **A. La Surchauffe :** Passage de boom deflationiste a inflationsite
+    **A. La Surchauffe :** Passage de boom déflationiste à inflationiste
     * **Le mécanisme :** L'économie tourne à plein régime, les pénuries apparaissent, les salaires montent.
-    * **Signes avant-coureurs :** Hausse des prix des intrants (energie, matieres premieres), plein emploi, courbes de taux qui se pentifient (yield curve).
-    * **Rotation :** Vendre les Actions d'Efficacite (tech, sensibles aux taux) pour acheter des Actions de Rarete (energie, matieres premieres)
+    * **Signes avant-coureurs :** Hausse des prix des intrants (énergie, matières premières), plein emploi, courbes de taux qui se pentifient (yield curve), ratio or/cuivre
+    * **Rotation :** Vendre les Actions d'Efficacité (tech, sensibles aux taux) pour acheter des Actions de Rareté (énergie, matieres premieres) \n
+
+    **B. Le Serrage Monétaire :** Passage de boom inflationiste au bust inflationniste
+    * **Le mécanisme :** La Banque Centrale monte les taux violemment pour casser l'inflation. Le crédit s'assèche, la croissance cale mais les prix restent hauts.
+    * **Signes avant-coureurs :** Inversion de la courbe des taux (taux courts > taux longs), chute du moral des entreprises (PMI).
+    * **Rotation :** Vendre les Actions cycliques pour l'Or et le Cash. On cherche la protection du capital. \n
     
-    
-    
+    **C. Le Crack Déflationniste :** Passage de bust inflationniste au bust déflationniste**
+    * **Le mécanisme :** La "destruction de la demande". Le chômage monte, la consommation s'effondre, les prix finissent par baisser.
+    * **Signes avant-coureurs :** Chute brutale du prix du pétrole, explosion des faillites, pivot de la Banque Centrale (baisse des taux).
+    * **Rotation :** Vendre l'Or/Matières Premières pour les Obligations d'État Long Terme. Les taux baissent, donc le prix des obligations explose. \n
+
+    **D. La Relance :** Passage de bust déflationniste au boom déflationniste**
+    * **Le mécanisme :** Les injections de liquidités massives portent leurs fruits. La croissance repart sur une base de prix bas.
+    * **Signes avant-coureurs :** Reprise des indicateurs avancés (PMI), retour de l'appétit pour le risque.
+    * **Rotation :** Vendre les Obligations et le Cash pour revenir massivement sur les Actions. \n
+
+    ### 🧠 Comment reconnaître le virage ?
+    * Mouvement anti-horaire (classique) : Boom ➔ Surchauffe ➔ Stagflation ➔ Récession. C'est le cycle naturel de la dette.
+    * Mouvement diagonal (choc) : Un "Cygne Noir" (Guerre, Pandémie) peut vous projeter du Boom Déflationniste (SE) au Bust Inflationniste (NO) en quelques semaines.  
     """)
 
     st.info("💡 **Conseil :** Si votre radar est équilibré sur les 4 quadrants, vous n'avez pas besoin de prédire la prochaine transition, votre patrimoine est prêt à l'absorber.")
@@ -388,7 +378,7 @@ CONFIG_STYLES = {
 
 
 ##### 5. Création de l'UI
-# Item 1 - Slider date
+# Item 1 - Slider date 📅
 liste_dates_obj = sorted(df_valo['Date'].unique()) 
 liste_dates_str = [d.strftime('%d/%m/%Y') for d in liste_dates_obj]
 
@@ -401,7 +391,7 @@ date_selectionnee_fmt = st.sidebar.select_slider(
 
 date_cible = pd.to_datetime(date_selectionnee_fmt, dayfirst=True).date()
 
-#  Item 2 - Filtre de portefeuille (multiselect)
+#  Item 2 - Filtre de portefeuille (multiselect) 🗂️
 st.sidebar.divider()
 st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 0.5rem;'>PORTEFEUILLES 🗂️</p>", unsafe_allow_html=True)
 
@@ -414,7 +404,7 @@ portefeuilles_selectionnes = st.sidebar.multiselect(
     label_visibility="collapsed"
 )
 
-#  Item 3 - Filtrer l'allocation selon la sous-catégorie
+#  Item 3 - Filtrer l'allocation selon la sous-catégorie 📊
 st.sidebar.divider()
 st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 0.5rem;'>ALLOCATION 📊</p>", unsafe_allow_html=True)
 
@@ -433,7 +423,7 @@ dimension_choisie = st.sidebar.selectbox(
     index=0
 )
 
-# Item 4 - Information Quadrant 
+# Item 4 - Information Quadrant ℹ️
 st.sidebar.divider()
 # 1. Le titre et la ligne de texte en un seul bloc Markdown pour contrôler l'espace
 st.sidebar.markdown("""
@@ -447,12 +437,12 @@ st.sidebar.markdown("""
 if st.sidebar.button("LES QUADRANTS ℹ️", key="btn_quadrant_info", help="Ouvrir l'aide"):
     show_help_quadrants()
 
-#  Item 5 - Exclure ou non les versements dans synthese_3
+#  Item 5 - Exclure ou non les versements dans synthese_3 💸
 st.sidebar.divider()
 st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 0.5rem;'>OPTIONS ⚡</p>", unsafe_allow_html=True)
 exclure_versements = st.sidebar.toggle("Exclure les versements 💸", value=False)
 
-#  Item 6 - ajout d'un mode discret
+#  Item 6 - ajout d'un mode discret 🔒
 # (pas de divider ici, on reste dans la section OPTIONS)
 mode_discret = st.sidebar.checkbox("Mode discret 🔒", value=False)
 
@@ -638,8 +628,8 @@ if idx_actuel > 0:
     df_histo_delta['Prev_Valeur'] = df_histo_delta.groupby('Portefeuille')['Valeur'].shift(1)
     df_histo_delta['Diff'] = df_histo_delta['Valeur'] - df_histo_delta['Prev_Valeur']
     
-    max_delta = df_histo_delta['Diff'].max() * 1.15
-    min_delta = df_histo_delta['Diff'].min() * 1.15
+    max_delta = df_histo_delta['Diff'].max() * 1.2
+    min_delta = df_histo_delta['Diff'].min() * 2.5
     range_x = [min_delta if min_delta < 0 else -100, max_delta if max_delta > 0 else 100]
 
     # --- Génération du graphique ---
