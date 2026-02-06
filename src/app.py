@@ -11,16 +11,65 @@ import numpy as np
 # largeur d'écran streamlit
 st.set_page_config(layout="wide")
 
+# fond d'écran de l'app :)
+img_url = "https://raw.githubusercontent.com/gjuin/monfinary2/342da2d2bb2fde053acc12f25a9b80c35bbedfd2/pic/Gemini_Generated_Image_5523w75523w75523.png"
+
+def add_bg_from_url():
+    st.markdown(
+        f"""
+        <style>
+        /* On crée un calque spécifique derrière l'application */
+        .stApp::before {{
+            filter: brightness(50%);
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1; /* Indispensable pour ne pas bloquer les clics */
+            
+            /* Ton image avec le filtre blanc pour la lisibilité */
+            background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 1)),
+                              url("https://raw.githubusercontent.com/gjuin/monfinary2/342da2d2bb2fde053acc12f25a9b80c35bbedfd2/pic/Gemini_Generated_Image_5523w75523w75523.png");
+            
+            background-attachment: fixed;
+            background-size: cover;
+            background-position: center 5%;
+            
+            /* Effet de traveling / zoom léger */
+            animation: slow_pan 80s ease-in-out infinite;
+        }}
+
+        /* Animation pour le mouvement de l'image */
+        @keyframes slow_pan {{
+            0% {{ transform: scale(1.0); background-position: center; }}
+            50% {{ transform: scale(1.1); background-position: top; }}
+            100% {{ transform: scale(1.0); background-position: center; }}
+        }}
+
+        /* On s'assure que les fonds des widgets ne masquent pas l'image */
+        .stApp {{
+            background: transparent !important;
+            
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+add_bg_from_url()
+
 # style CSS pour compacter la sidebar
 st.markdown("""
     <style>
     /* 1. Espace global entre widgets */
     [data-testid="stSidebarUserContent"] div.stElementContainer {
-        margin-bottom: -0.75rem !important;
+        margin-bottom: -0.9rem !important;
     }
     
     [data-testid="stSidebarUserContent"] label[data-testid="stWidgetLabel"] {
-    margin-top: 0.125rem !important;
+    margin-top: 0.100rem !important;
     }
 
     [data-testid="stSidebarUserContent"] [data-testid="stMarkdownContainer"] p {
@@ -111,7 +160,7 @@ st.markdown("""
         margin-top: -2.5em !important; 
     }
     div.block-container {
-        padding-top: 1rem !important;
+        padding-top: 0rem !important;
         max-width: 99% !important;
     }
 
@@ -211,7 +260,23 @@ def show_help_quadrants():
     ### 🧠 Comment reconnaître le virage ?
     * Mouvement anti-horaire (classique) : Boom ➔ Surchauffe ➔ Stagflation ➔ Récession. C'est le cycle naturel de la dette.
     * Mouvement diagonal (choc) : Un "Cygne Noir" (Guerre, Pandémie) peut vous projeter du Boom Déflationniste (SE) au Bust Inflationniste (NO) en quelques semaines.  
+    \n
     """)
+
+    st.markdown("""
+    ### 📊 Les différents styles d'actions
+        """)
+    
+    st.markdown("""
+    | Style d'Action | Caractéristiques | Secteurs Clés | Comportement vs Cycle |
+    | :--- | :--- | :--- | :--- |
+    | **Croissance** | Sociétés qui réinvestissent tout pour croître. Valorisation basée sur les profits futurs. | Tech, IA, Fintech, Cloud, Quantique | Explose en **Expansion**. Très sensible aux taux. |
+    | **Cyclique** | Fortement liées à la santé de l'économie mondiale et à la demande. | Luxe, Mines, Industrie, Énergie | Suit la santé du PIB. Surperforment en **Surchauffe** ou début de cycle. Souffrent en **Récession**. |
+    | **Qualité** | Marges élevées, peu d'endettement, barrières à l'entrée fortes (Moat). | Luxe (Top), Santé, Tech (Gafam) | Résilientes. Elles sont le "fond de portefeuille" qui traverse les crises. |
+    | **Efficacité** | Sociétés qui optimisent la productivité par l'innovation (concept "Goldilocks") | Logiciels, Semi-conducteurs | Optimise la productivité mondiale. Profitent d'un monde avec peu d'inflation et une croissance technologique forte |
+    | **Rareté** | Actifs tangibles ou finis qui protègent contre la dévaluation monétaire. | Or, Agriculture, Immo prestige | Les champions de la **Stagflation**. Valeur refuge quand le papier monnaie perd du pouvoir. |
+    | **Défensives** | Besoins primaires. La demande reste stable même si l'économie s'effondre. | Infra, Santé, Conso de base, Utilities | Protègent le capital en **Ralentissement** et **Récession**. |
+""")
 
     st.info("💡 **Conseil :** Si votre radar est équilibré sur les 4 quadrants, vous n'avez pas besoin de prédire la prochaine transition, votre patrimoine est prêt à l'absorber.")
 
@@ -512,7 +577,9 @@ synthese_1.update_layout(
         title=""),
     margin=dict(l=50, r=50, t=50, b=50),
     height= 425,
-    hovermode="closest" # uniquement où je pointe
+    hovermode="closest", # uniquement où je pointe
+    paper_bgcolor='rgba(0,0,0,0)', # Fond extérieur
+    plot_bgcolor='rgba(0,0,0,0)'   # Fond du tracé 
 )
 synthese_1.update_traces(
     hovertemplate="<b>%{fullData.name}</b> : •••• €<extra></extra>" if mode_discret else "<b>%{fullData.name}</b> : %{y:,.0f} €<extra></extra>"
@@ -570,7 +637,9 @@ synthese_2.update_layout(
         xanchor="right", x=-0.05,
         title=""),
     margin=dict(l=50, r=50, t=50, b=50),
-    height=425
+    height=425,
+    paper_bgcolor='rgba(0,0,0,0)', # Fond extérieur
+    plot_bgcolor='rgba(0,0,0,0)'   # Fond du tracé 
 )
 
 ### Synthese 3 - les mouvements du patrimoine T - T-1 ### 
@@ -663,7 +732,9 @@ if idx_actuel > 0:
         separators=", ",
         showlegend=False,
         margin=dict(l=50, r=50, t=50, b=50),
-        height=425
+        height=425,
+        paper_bgcolor='rgba(0,0,0,0)', # Fond extérieur
+        plot_bgcolor='rgba(0,0,0,0)'   # Fond du tracé (entre les axes)
     )
 else:
     # Si c'est la première date, on s'assure que df_delta est vide pour le message final
