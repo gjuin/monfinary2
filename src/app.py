@@ -745,96 +745,77 @@ scores = resultats_radar
 
 # On ferme la boucle pour le tracé
 scores_plot = scores + [scores[0]]
-angles_scenarios = np.linspace(0, 360, len(scenarios), endpoint=False)
-angles_plot = list(angles_scenarios) + [360]
-labels_plot = scenarios_labels + [scenarios_labels[0]]
-
-# Fonction pour générer un cercle lisse (100 points)
-def get_circle_points(radius):
-    t = np.linspace(0, 360, 100)
-    return [radius] * 100, t
-
-r_fragile, t_circle = get_circle_points(33)
-r_neutre, _ = get_circle_points(66)
+angles_scenarios = scenarios_labels + [scenarios_labels[0]]
 
 # le graphique
 synthese_4 = go.Figure()
 
-# zone neutre 33-66
-synthese_4.add_trace(go.Scatterpolar(
-    r=r_neutre,
-    theta=t_circle,
-    fill='toself',
-    fillcolor="rgba(255, 229, 153, 1)", # jaune 
-    line=dict(width=0),
-    marker=dict(opacity=0), # Supprime les points
-    hoverinfo='skip',
-    showlegend=False
-))
-
-# zone fragile <33
-synthese_4.add_trace(go.Scatterpolar(
-    r= r_fragile,
-    theta= t_circle,
-    fill='toself',
-    fillcolor="rgba(234, 153, 153, 1)",
-    line=dict(width=0),
-    marker=dict(opacity=0), 
-    hoverinfo='skip',
-    showlegend=False
-))
-
-# mon épargne - Par-dessus tout le reste
+# Trace 1 : Le Halo (L'effet de lueur 3D)
 synthese_4.add_trace(go.Scatterpolar(
     r=scores_plot,
-    theta=angles_plot,
+    theta=angles_scenarios,
+    mode='lines',
+    line=dict(color='#4285F4', width=12, shape='linear'),
+    opacity=0.15, # Très léger pour l'effet de flou
+    hoverinfo='none'
+))
+
+# mon patrimoine
+synthese_4.add_trace(go.Scatterpolar(
+    r=scores_plot,
+    theta=angles_scenarios,
     fill='toself',
     customdata=scenarios_labels + [scenarios_labels[0]],
     hovertemplate="<b>%{customdata}</b><br>%{r:.1f}<extra></extra>",
-    line=dict(color="#434343", width=2),
-    marker=dict(opacity=1,size=4), 
-    fillcolor="rgba(31, 119, 180, 0.3)"
+    line=dict(color='#4285F4', width=2),
+    marker=dict(size=8, opacity=0, symbol='circle-open'), 
+    fillcolor='rgba(66, 133, 244, 1)' # Bleu Google transparent
 ))
 
-# rajouter des axes pour visualiser les quadrants
+# le max
 synthese_4.add_trace(go.Scatterpolar(
-    r=[100, 100],
-    theta=[90, 270],
-    mode='lines',
-    line=dict(color="rgba(0,0,0,0.2)", width=2, dash='dot'),
-    hoverinfo='skip',
-    showlegend=False
-))
-
-synthese_4.add_trace(go.Scatterpolar(
-    r=[100, 100],
-    theta=[0, 180],
-    mode='lines',
-    line=dict(color="rgba(0,0,0,0.2)", width=2, dash='dot'),
-    hoverinfo='skip',
+    r=[100] * len(angles_scenarios),
+    theta=angles_scenarios,
+    mode='markers',
+    marker=dict(
+        size=8, 
+        color='#4285F4', # Bleu Google
+        opacity=1,
+        symbol='circle'
+    ),
+    hoverinfo='none',
     showlegend=False
 ))
 
 synthese_4.update_layout(
     title="<b>Antifragilité et les Quatre Quadrants </b>",
-    showlegend=False,
-    polar=dict(
-        bgcolor="rgba(182, 215, 168, 1)", # Fond vert (Antifragile) 
-        radialaxis=dict(
-            visible=False,           # On le réactive pour voir la grille
-            range=[0, 100]
-            ),
-        angularaxis=dict(
-            #tickfont=dict(size=11, color="gray"),
-            tickvals=angles_scenarios,     # On dit à Plotly où sont les points
-            ticktext=scenarios_labels,      # On lui donne les noms à afficher à ces endroits
-            rotation=90,
-            direction="clockwise",
-            showgrid=False
-        )
-    ),
+    height=425,
     margin=dict(l=20, r=20, t=50, b=50),
-    height=425
+    polar=dict(
+        bgcolor='rgba(0,0,0,0)', # Fond du radar transparent
+        radialaxis=dict(
+            visible=True,
+            range=[0, 100],
+            showticklabels=False,
+            showgrid=True,
+            showline=False, # Masque l'axe radial noir
+            ticks="",       # Supprime les petits traits de graduation    
+            gridcolor="rgba(128, 128, 128, 0.2)",
+            linecolor='rgba(0,0,0,0)', # Cache la ligne d'axe centrale
+        ),
+        angularaxis=dict(
+            direction="clockwise",
+            period=8,
+            gridcolor="rgba(128, 128, 128, 0.5)",
+            linecolor="rgba(128, 128, 128, 0.5)", # Bordure extérieure
+            tickfont=dict(size=11),
+            rotation=90
+        ),
+        gridshape='linear' # transforme les cercles en lignes droites
+    ),
+    showlegend=False,
+    paper_bgcolor='rgba(0,0,0,0)',  # Fond global transparent
+    plot_bgcolor='rgba(0,0,0,0)'    # Fond du tracé transparent
 )
 
 ### KPIs en haut ###
