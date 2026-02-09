@@ -517,6 +517,12 @@ if not portefeuilles_selectionnes:
     st.warning("Veuillez sélectionner au moins un portefeuille dans la barre latérale.")
     st.stop()
 
+# largeur des graphiques
+width_col1 = 500
+width_col2 = 425
+height = 425
+
+
 #### Synthese 1 - histo empilé par portefeuille ###
 df_plot = df_valo[
     (df_valo['Date'] <= date_cible) &                           # filtrage dynamique sur la date
@@ -576,7 +582,8 @@ synthese_1.update_layout(
         traceorder ="reversed", #normal
         title=""),
     margin=dict(l=50, r=50, t=50, b=50),
-    height= 425,
+    height= height,
+    width = width_col1,
     hovermode="closest", # uniquement où je pointe
     paper_bgcolor='rgba(0,0,0,0)', # Fond extérieur
     plot_bgcolor='rgba(0,0,0,0)'   # Fond du tracé 
@@ -606,8 +613,8 @@ df_donut = df_alloc.groupby('Sous-Catégorie')['Valeur_Ponderee'].sum().reset_in
 
 # on récupère la config spécifique à la dimension choisie
 config_actuelle = CONFIG_STYLES.get(dimension_choisie, {}) # .get() permet de ne pas planter si la dimension n'est pas encore définie dans CONFIG_STYLES
-couleurs_map = config_actuelle.get("couleurs", None)
-ordre_cat = config_actuelle.get("ordre", None)
+couleurs_map = config_actuelle.get("couleurs", {}) # None ou {} si la dimension n'a pas de config de style
+ordre_cat = config_actuelle.get("ordre", {})
 
 synthese_2 = px.pie(
     df_donut, 
@@ -616,7 +623,7 @@ synthese_2 = px.pie(
     hole=0.5,
     color='Sous-Catégorie',
     color_discrete_map=couleurs_map, 
-    category_orders={"Sous-Catégorie": ordre_cat}, # Applique ton ordre
+    category_orders={"Sous-Catégorie": ordre_cat} if ordre_cat else None, 
     title=f"<b>Répartition par {dimension_choisie}</b>",
     template="plotly_white"
 )
@@ -637,7 +644,8 @@ synthese_2.update_layout(
         xanchor="right", x=-0.05,
         title=""),
     margin=dict(l=50, r=50, t=50, b=50),
-    height=425,
+    height= height,
+    width = width_col2,
     paper_bgcolor='rgba(0,0,0,0)', # Fond extérieur
     plot_bgcolor='rgba(0,0,0,0)'   # Fond du tracé 
 )
@@ -732,7 +740,8 @@ if idx_actuel > 0:
         separators=", ",
         showlegend=False,
         margin=dict(l=50, r=50, t=50, b=50),
-        height=425,
+        height= height,
+        width = width_col2,
         paper_bgcolor='rgba(0,0,0,0)', # Fond extérieur
         plot_bgcolor='rgba(0,0,0,0)'   # Fond du tracé (entre les axes)
     )
@@ -860,7 +869,8 @@ synthese_4.add_trace(go.Scatterpolar(
 
 synthese_4.update_layout(
     title="<b>Antifragilité et les Quatre Quadrants </b>",
-    height=425,
+    height= height,
+    width = width_col1,
     margin=dict(l=20, r=20, t=50, b=50),
     polar=dict(
         bgcolor='rgba(0,0,0,0)', # Fond du radar transparent
@@ -887,6 +897,92 @@ synthese_4.update_layout(
     showlegend=False,
     paper_bgcolor='rgba(0,0,0,0)',  # Fond global transparent
     plot_bgcolor='rgba(0,0,0,0)'    # Fond du tracé transparent
+)
+
+
+### Synthese 5 - Performence par portefeuille  ### 
+# sommer les versements jusqu'à la date choisie et les dates précédentes
+df_vers_select = df_vers[
+    (df_vers['Date'] <= date_cible) &                           # filtrage dynamique sur la date
+    (df_vers['Portefeuille'].isin(portefeuilles_selectionnes))  # filtrage dynamique sur les portefeuilles
+]
+df_vers_select = df_vers_select.groupby(['Portefeuille','Date'])['Versement'].sum().reset_index()
+df_vers_select = df_vers_select.sort_values(['Portefeuille', 'Date'])
+df_vers_select['Versement_Cumule'] = df_vers_select.groupby('Portefeuille')['Versement'].cumsum() # somme cumulée par portefeuille
+
+# sommer les valo à la date choisie et les dates précédentes
+df_valo_select = df_valo[
+    (df_valo['Date'] <= date_cible) &                           # filtrage dynamique sur la date
+    (df_valo['Portefeuille'].isin(portefeuilles_selectionnes))  # filtrage dynamique sur les portefeuilles
+]
+df_valo_select = df_valo_select.groupby(['Portefeuille','Date'])['Valeur'].sum().reset_index()
+
+# merge
+df_perf = pd.merge(df_valo_select, df_vers_select, on=["Portefeuille","Date"])
+
+# calcul de perf
+df_perf['G_P'] = df_perf['Valeur'] - df_perf['Versement_Cumule']
+df_perf['Performence'] = df_perf['G_P']/df_perf['Versement_Cumule'] 
+df_perf['Date_Labels'] = pd.to_datetime(df_perf['Date']).dt.strftime('%d/%m/%Y') # reconversion date python puis en charactères
+
+# Création du graphique en courbe
+synthese_5 = px.line(
+    df_perf,
+    x='Date_Labels',
+    y=['Performence'], 
+    color='Portefeuille',
+    color_discrete_map = couleurs_portefeuille,
+    category_orders={"Portefeuille": ordre_portefeuille},
+    title="<b>Performence par portefeuille</b>",
+    template="plotly_white",
+    markers=False,
+    line_shape='spline'
+)
+
+# config des axes : suppression du grid, des labels, formats...
+synthese_5.update_xaxes(type='category', title="", showgrid=False, tickangle=-40) # Rend les distances égales entre barres
+max_perf = df_perf[
+        (~df_perf['Portefeuille'].isin(['Compte-Courant','Airliquide.fr','Wallet']))
+        ]['Performence'].max() * 1.1
+min_perf = df_perf[
+        (~df_perf['Portefeuille'].isin(['Compte-Courant','Airliquide.fr','Wallet']))
+        ]['Performence'].min() * 1.1
+tick_positions = np.linspace(min_perf, max_perf, 5)
+if mode_discret:
+    y_axis_config2 = dict(
+        range=[min_perf, max_perf],
+        tickvals=tick_positions,
+        ticktext=["•••• %"] * 5 , 
+        title="",
+        showgrid=False,
+        side="right"
+    )
+else:
+    y_axis_config2 = dict(
+        range=[min_perf, max_perf],
+        title="",
+        showgrid=False,
+        side="right",
+        tickformat=".1%"
+    )
+
+synthese_5.update_layout(
+    paper_bgcolor='rgba(0,0,0,0)',
+    plot_bgcolor='rgba(0,0,0,0)',
+    font_color="white",
+    hovermode="closest", 
+    yaxis=y_axis_config2,
+    height= height,
+    width = width_col1,
+    legend=dict(orientation="v",
+        yanchor="top", y=0.9, 
+        xanchor="right", x=-0.05,
+        traceorder ="reversed", #normal
+        title="")
+)
+synthese_5.update_traces(
+    hovertemplate="<b>%{fullData.name}</b> : •••• %<extra></extra>" if mode_discret 
+    else "<b>%{fullData.name}</b> : %{y:.1%}<extra></extra>"
 )
 
 ### KPIs en haut ###
@@ -936,10 +1032,10 @@ st.markdown(
 col1, col2 = st.columns([1.4, 1.1]) 
 
 with col1:
-    st.plotly_chart(synthese_1, use_container_width=True)
+    st.plotly_chart(synthese_1, use_container_width=False)
 with col2:
     if not df_delta.empty:
-        st.plotly_chart(synthese_3, use_container_width=True) # Affichage sur toute la largeur sous les deux autres graphiques
+        st.plotly_chart(synthese_3, use_container_width=False) # Affichage sur toute la largeur sous les deux autres graphiques
     else:
         # Si c'est vide (première date), on affiche un petit message discret
         st.info("Sélectionnez une date ultérieure pour voir les mouvements par rapport au mois précédent.")
@@ -948,14 +1044,14 @@ st.markdown("<hr style='margin: 0rem 0rem 0.938rem 0rem; border: 0.063rem solid 
 col3, col4 = st.columns([1.4, 1.1])
 
 with col3:
-    st.plotly_chart(synthese_4, use_container_width=True)
+    st.plotly_chart(synthese_4, use_container_width=False)
 
 with col4:
-    st.plotly_chart(synthese_2, use_container_width=True)
+    st.plotly_chart(synthese_2, use_container_width=False)
 
-
+st.plotly_chart(synthese_5, use_container_width=False)
 
 #st.write("### Données brutes du Radar")
 #st.dataframe(df_prod_agg[df_prod_agg['Portefeuille'] == 'PEE'], use_container_width=True)
 #st.dataframe(scores, use_container_width=True)
-
+st.dataframe(df_perf, use_container_width=True)
