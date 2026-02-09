@@ -29,9 +29,9 @@ def add_bg_from_url():
             height: 100vh;
             z-index: -1; /* Indispensable pour ne pas bloquer les clics */
             
-            /* Ton image avec le filtre blanc pour la lisibilité */
-            background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 1)),
-                              url("https://raw.githubusercontent.com/gjuin/monfinary2/342da2d2bb2fde053acc12f25a9b80c35bbedfd2/pic/Gemini_Generated_Image_5523w75523w75523.png");
+            /* Mon image avec le filtre blanc pour la lisibilité */
+            background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.95)),
+                              url("{img_url}");
             
             background-attachment: fixed;
             background-size: cover;
@@ -60,7 +60,7 @@ def add_bg_from_url():
 
 add_bg_from_url()
 
-# style CSS pour compacter la sidebar
+# style CSS pour compacter la sidebar et zone principale
 st.markdown("""
     <style>
     /* 1. Espace global entre widgets */
@@ -135,6 +135,32 @@ st.markdown("""
     margin-bottom: 0rem !important;
     }
 
+    /* Colorisation dynamique des tags du Multiselect */
+    /* On cible les spans qui contiennent le nom du portefeuille */
+    span[data-baseweb="tag"]:has(span[title="Livret A"]) { background-color: #b6d7a8 !important; }
+    span[data-baseweb="tag"]:has(span[title="LDDS"]) { background-color: #93c47d !important; }
+    span[data-baseweb="tag"]:has(span[title="Livret Bourso +"]) { background-color: #6aa84f !important; }
+    span[data-baseweb="tag"]:has(span[title="Compte-Courant"]) { background-color: #38761d !important; }
+    span[data-baseweb="tag"]:has(span[title="Airliquide.fr"]) { background-color: #9fc5e8 !important; }
+    span[data-baseweb="tag"]:has(span[title="PEE"]) { background-color: #e06666 !important; }
+    span[data-baseweb="tag"]:has(span[title="PEA"]) { background-color: #cc0000 !important; }
+    span[data-baseweb="tag"]:has(span[title="AV Bourso"]) { background-color: #c27ba0 !important; }
+    span[data-baseweb="tag"]:has(span[title="AV Mutavie"]) { background-color: #d0d0d0 !important; }
+    span[data-baseweb="tag"]:has(span[title="CTO"]) { background-color: #f1c232 !important; }
+    span[data-baseweb="tag"]:has(span[title="Wallet"]) { background-color: #ff9900 !important; }
+
+    /* Ajustement de la couleur du texte pour la lisibilité si besoin */
+    span[data-baseweb="tag"] span {
+        color: white !important;
+        font-weight: bold !important;
+    }
+
+    /* On s'assure que le bouton de suppression (X) reste blanc */
+        span[data-baseweb="tag"] svg {
+        fill: white !important;
+    }
+
+
     /* 6. Dividers compacts */
     [data-testid="stSidebarUserContent"] hr {
         margin-top: 0.75rem !important;
@@ -143,20 +169,22 @@ st.markdown("""
 
     /* 7. REMONTÉE SYNCHRONISÉE SIDEBAR & CONTENU */
     .stMain, [data-testid="stSidebar"] {
-        margin-top: -3.5rem !important;
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+        margin-top: 0rem !important;
+        margin-bottom: 0rem !important;
     }
+
     [data-testid="stHeader"] {
-        height: 0rem !important;
+        height: 0px !important;
         background: transparent !important;
     }
 
     /* 8. AJUSTEMENT INTERNE DES CONTENEURS */
     .stApp [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:first-child {
         margin-top: 0rem !important;
-        padding-top: 2rem !important;
     }
     [data-testid="stSidebarUserContent"] {
-        padding-top: 0rem !important;
         margin-top: -2.5em !important; 
     }
     div.block-container {
@@ -279,6 +307,8 @@ def show_help_quadrants():
 """)
 
     st.info("💡 **Conseil :** Si votre radar est équilibré sur les 4 quadrants, vous n'avez pas besoin de prédire la prochaine transition, votre patrimoine est prêt à l'absorber.")
+
+
 
 ##### 1. Connexion 
 url = "https://docs.google.com/spreadsheets/d/1ZWOQWdYI7CXen4RRkvKkWnRTA_xydKO0sZHwFdGzj7M/edit#gid=0"
@@ -460,12 +490,10 @@ date_cible = pd.to_datetime(date_selectionnee_fmt, dayfirst=True).date()
 st.sidebar.divider()
 st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 0.5rem;'>PORTEFEUILLES 🗂️</p>", unsafe_allow_html=True)
 
-liste_portefeuilles_dispo = sorted(df_valo['Portefeuille'].unique())
-
 portefeuilles_selectionnes = st.sidebar.multiselect(
     "Sélectionner :",
-    options=liste_portefeuilles_dispo,
-    default=liste_portefeuilles_dispo,
+    options=ordre_portefeuille,
+    default=ordre_portefeuille,
     label_visibility="collapsed"
 )
 
@@ -575,13 +603,14 @@ synthese_1.update_layout(
     yaxis=y_axis_config,
     separators=", ", # Définit l'espace comme séparateur de milliers
     #xaxis=dict(title="", showgrid=False, tickangle=-40),
+    showlegend=False,
     legend=dict(
         orientation="v",
         yanchor="top", y=0.9, 
         xanchor="right", x=-0.05,
         traceorder ="reversed", #normal
         title=""),
-    margin=dict(l=50, r=50, t=50, b=50),
+    margin=dict(l=20, r=20, t=50, b=50),
     height= height,
     width = width_col1,
     hovermode="closest", # uniquement où je pointe
@@ -643,7 +672,7 @@ synthese_2.update_layout(
         yanchor="top", y=0.8, 
         xanchor="right", x=-0.05,
         title=""),
-    margin=dict(l=50, r=50, t=50, b=50),
+    margin=dict(l=50, r=50, t=60, b=40),
     height= height,
     width = width_col2,
     paper_bgcolor='rgba(0,0,0,0)', # Fond extérieur
@@ -871,7 +900,7 @@ synthese_4.update_layout(
     title="<b>Antifragilité et les Quatre Quadrants </b>",
     height= height,
     width = width_col1,
-    margin=dict(l=20, r=20, t=50, b=50),
+    margin=dict(l=20, r=20, t=60, b=40),
     polar=dict(
         bgcolor='rgba(0,0,0,0)', # Fond du radar transparent
         radialaxis=dict(
@@ -905,6 +934,7 @@ synthese_4.update_layout(
 df_vers_select = df_vers[
     (df_vers['Date'] <= date_cible) &                           # filtrage dynamique sur la date
     (df_vers['Portefeuille'].isin(portefeuilles_selectionnes))  # filtrage dynamique sur les portefeuilles
+    & ~(df_vers['Portefeuille'].isin(['Compte-Courant']))
 ]
 df_vers_select = df_vers_select.groupby(['Portefeuille','Date'])['Versement'].sum().reset_index()
 df_vers_select = df_vers_select.sort_values(['Portefeuille', 'Date'])
@@ -914,6 +944,7 @@ df_vers_select['Versement_Cumule'] = df_vers_select.groupby('Portefeuille')['Ver
 df_valo_select = df_valo[
     (df_valo['Date'] <= date_cible) &                           # filtrage dynamique sur la date
     (df_valo['Portefeuille'].isin(portefeuilles_selectionnes))  # filtrage dynamique sur les portefeuilles
+    & ~(df_vers['Portefeuille'].isin(['Compte-Courant']))
 ]
 df_valo_select = df_valo_select.groupby(['Portefeuille','Date'])['Valeur'].sum().reset_index()
 
@@ -969,11 +1000,13 @@ else:
 synthese_5.update_layout(
     paper_bgcolor='rgba(0,0,0,0)',
     plot_bgcolor='rgba(0,0,0,0)',
+    margin=dict(l=0, r=0, t=50, b=50), # les marges de zone de dessin 
     font_color="white",
     hovermode="closest", 
     yaxis=y_axis_config2,
     height= height,
     width = width_col1,
+    showlegend=False,
     legend=dict(orientation="v",
         yanchor="top", y=0.9, 
         xanchor="right", x=-0.05,
@@ -981,6 +1014,8 @@ synthese_5.update_layout(
         title="")
 )
 synthese_5.update_traces(
+    line=dict(width=3, shape='spline', smoothing=1.3),
+    
     hovertemplate="<b>%{fullData.name}</b> : •••• %<extra></extra>" if mode_discret 
     else "<b>%{fullData.name}</b> : %{y:.1%}<extra></extra>"
 )
@@ -1049,9 +1084,15 @@ with col3:
 with col4:
     st.plotly_chart(synthese_2, use_container_width=False)
 
-st.plotly_chart(synthese_5, use_container_width=False)
+st.markdown("<hr style='margin: 0rem 0rem 0.938rem 0rem; border: 0.063rem solid #f0f2f6;'>", unsafe_allow_html=True)
+col5, col6 = st.columns([1.4, 1.1])
+
+with col5:
+    st.plotly_chart(synthese_5, use_container_width=False)
+
+#st.markdown("<hr style='margin: 0rem 0rem 0.938rem 0rem; border: 0.063rem solid #f0f2f6;'>", unsafe_allow_html=True)
 
 #st.write("### Données brutes du Radar")
 #st.dataframe(df_prod_agg[df_prod_agg['Portefeuille'] == 'PEE'], use_container_width=True)
 #st.dataframe(scores, use_container_width=True)
-st.dataframe(df_perf, use_container_width=True)
+#st.dataframe(df_perf, use_container_width=True)
