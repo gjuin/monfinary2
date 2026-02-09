@@ -407,6 +407,7 @@ df_classes['Sous-Catégorie'] = df_classes['Sous-Catégorie'].astype(str).str.sp
 df_classes['Dimension'] = "Superclasse d'actif"
 df_map = pd.concat([df_map, df_classes], ignore_index=True)
 
+# gestion des portefeuilles
 ordre_portefeuille = ["Livret A", 
                       "LDDS", 
                       "Livret Bourso +",
@@ -433,6 +434,7 @@ couleurs_portefeuille = {
     "Wallet": "#ff9900"
 }
 
+# gestion des styles par dimension
 CONFIG_STYLES = {
     "Superclasse d'actif": {
         "couleurs": {
@@ -1020,6 +1022,37 @@ synthese_5.update_traces(
     else "<b>%{fullData.name}</b> : %{y:.1%}<extra></extra>"
 )
 
+
+### Synthese 6 - Matrice de corrélation  ### 
+# sommer les versements jusqu'à la date choisie et les dates précédentes
+df_vers_correl = df_vers[
+    (df_vers['Date'] <= date_cible) &                           # filtrage dynamique sur la date
+    (df_vers['Portefeuille'].isin(portefeuilles_selectionnes))  # filtrage dynamique sur les portefeuilles
+    & ~(df_vers['Portefeuille'].isin(['Compte-Courant','LDDS','Livret A','Livret Bourso +'])) # on exclut les portefeuilles uniquement cash
+]
+df_vers_correl = df_vers_correl.groupby(['Portefeuille','Date'])['Versement'].sum().reset_index()
+
+# les valo par portefeuille par date
+df_valo_correl = df_valo[
+    (df_valo['Date'] <= date_cible) &                           # filtrage dynamique sur la date
+    (df_valo['Portefeuille'].isin(portefeuilles_selectionnes))  # filtrage dynamique sur les portefeuilles
+    & ~(df_valo['Portefeuille'].isin(['Compte-Courant','LDDS','Livret A','Livret Bourso +'])) # on exclut les portefeuilles uniquement cash
+]
+df_valo_correl = df_valo_correl.groupby(['Portefeuille', 'Date'])['Valeur'].sum().reset_index()
+df_valo_correl = df_valo_correl.sort_values(['Portefeuille', 'Date'])
+df_valo_correl['Variation_Brute'] = df_valo_correl.groupby('Portefeuille')['Valeur'].diff()
+
+# variation nette
+df_perf_correl = pd.merge(df_valo_correl, df_vers_correl, on=['Portefeuille', 'Date'], how='left').fillna(0)
+df_perf_correl['Perf_Nette'] = df_perf_correl['Variation_Brute'] - df_perf_correl['Versement']
+
+# Pivot pour avoir les portefeuilles en colonnes (nécessaire pour .corr())
+df_pivot_corr = df_perf_correl.pivot(index='Date', columns='Portefeuille', values='Perf_Nette').dropna()
+
+# la matrice
+corr_matrix = df_pivot_corr.corr()
+
+
 ### KPIs en haut ###
 total_patrimoine = df_now['Valeur'].sum() # kpi total patrimoine
 total_investi = df_vers[
@@ -1096,3 +1129,4 @@ with col5:
 #st.dataframe(df_prod_agg[df_prod_agg['Portefeuille'] == 'PEE'], use_container_width=True)
 #st.dataframe(scores, use_container_width=True)
 #st.dataframe(df_perf, use_container_width=True)
+st.dataframe(corr_matrix, use_container_width=True)
