@@ -263,8 +263,9 @@ def show_help_quadrants():
     """, language=None)
     
     st.markdown("""
+    \n
     ### 🔄 Les Mécanismes de Transition & Rotations
-    L'économie ne reste jamais figée ; elle circule entre ces quadrants. Anticiper la bascule est la clé de la performance. \n
+    L'économie ne reste jamais figée ; elle circule entre ces quadrants. Anticiper la bascule est la clé de la performance. \n \n
     **A. La Surchauffe :** Passage de boom déflationiste à inflationiste
     * **Le mécanisme :** L'économie tourne à plein régime, les pénuries apparaissent, les salaires montent.
     * **Signes avant-coureurs :** Hausse des prix des intrants (énergie, matières premières), plein emploi, courbes de taux qui se pentifient (yield curve), ratio or/cuivre
@@ -273,25 +274,27 @@ def show_help_quadrants():
     **B. Le Serrage Monétaire :** Passage de boom inflationiste au bust inflationniste
     * **Le mécanisme :** La Banque Centrale monte les taux violemment pour casser l'inflation. Le crédit s'assèche, la croissance cale mais les prix restent hauts.
     * **Signes avant-coureurs :** Inversion de la courbe des taux (taux courts > taux longs), chute du moral des entreprises (PMI).
-    * **Rotation :** Vendre les Actions cycliques pour l'Or et le Cash. On cherche la protection du capital. \n
+    * **Rotation :** Vendre les Actions cycliques pour l'Or et le Cash. On cherche la protection du capital. \n \n
     
     **C. Le Crack Déflationniste :** Passage de bust inflationniste au bust déflationniste**
     * **Le mécanisme :** La "destruction de la demande". Le chômage monte, la consommation s'effondre, les prix finissent par baisser.
     * **Signes avant-coureurs :** Chute brutale du prix du pétrole, explosion des faillites, pivot de la Banque Centrale (baisse des taux).
-    * **Rotation :** Vendre l'Or/Matières Premières pour les Obligations d'État Long Terme. Les taux baissent, donc le prix des obligations explose. \n
+    * **Rotation :** Vendre l'Or/Matières Premières pour les Obligations d'État Long Terme. Les taux baissent, donc le prix des obligations explose. \n \n
 
     **D. La Relance :** Passage de bust déflationniste au boom déflationniste**
     * **Le mécanisme :** Les injections de liquidités massives portent leurs fruits. La croissance repart sur une base de prix bas.
     * **Signes avant-coureurs :** Reprise des indicateurs avancés (PMI), retour de l'appétit pour le risque.
-    * **Rotation :** Vendre les Obligations et le Cash pour revenir massivement sur les Actions. \n
+    * **Rotation :** Vendre les Obligations et le Cash pour revenir massivement sur les Actions. \n \n
+    \n
 
     ### 🧠 Comment reconnaître le virage ?
     * Mouvement anti-horaire (classique) : Boom ➔ Surchauffe ➔ Stagflation ➔ Récession. C'est le cycle naturel de la dette.
     * Mouvement diagonal (choc) : Un "Cygne Noir" (Guerre, Pandémie) peut vous projeter du Boom Déflationniste (SE) au Bust Inflationniste (NO) en quelques semaines.  
-    \n
+    \n \n
     """)
 
     st.markdown("""
+    \n
     ### 📊 Les différents styles d'actions
         """)
     
@@ -304,6 +307,8 @@ def show_help_quadrants():
     | **Efficacité** | Sociétés qui optimisent la productivité par l'innovation (concept "Goldilocks") | Logiciels, Semi-conducteurs | Optimise la productivité mondiale. Profitent d'un monde avec peu d'inflation et une croissance technologique forte |
     | **Rareté** | Actifs tangibles ou finis qui protègent contre la dévaluation monétaire. | Or, Agriculture, Immo prestige | Les champions de la **Stagflation**. Valeur refuge quand le papier monnaie perd du pouvoir. |
     | **Défensives** | Besoins primaires. La demande reste stable même si l'économie s'effondre. | Infra, Santé, Conso de base, Utilities | Protègent le capital en **Ralentissement** et **Récession**. |
+
+    \n
 """)
 
     st.info("💡 **Conseil :** Si votre radar est équilibré sur les 4 quadrants, vous n'avez pas besoin de prédire la prochaine transition, votre patrimoine est prêt à l'absorber.")
@@ -975,10 +980,10 @@ synthese_5 = px.line(
 # config des axes : suppression du grid, des labels, formats...
 synthese_5.update_xaxes(type='category', title="", showgrid=False, tickangle=-40) # Rend les distances égales entre barres
 max_perf = df_perf[
-        (~df_perf['Portefeuille'].isin(['Compte-Courant','Airliquide.fr','Wallet']))
+        (~df_perf['Portefeuille'].isin(['Compte-Courant','Wallet']))
         ]['Performence'].max() * 1.1
 min_perf = df_perf[
-        (~df_perf['Portefeuille'].isin(['Compte-Courant','Airliquide.fr','Wallet']))
+        (~df_perf['Portefeuille'].isin(['Compte-Courant','Wallet']))
         ]['Performence'].min() * 1.1
 tick_positions = np.linspace(min_perf, max_perf, 5)
 if mode_discret:
@@ -1039,18 +1044,56 @@ df_valo_correl = df_valo[
     & ~(df_valo['Portefeuille'].isin(['Compte-Courant','LDDS','Livret A','Livret Bourso +'])) # on exclut les portefeuilles uniquement cash
 ]
 df_valo_correl = df_valo_correl.groupby(['Portefeuille', 'Date'])['Valeur'].sum().reset_index()
-df_valo_correl = df_valo_correl.sort_values(['Portefeuille', 'Date'])
-df_valo_correl['Variation_Brute'] = df_valo_correl.groupby('Portefeuille')['Valeur'].diff()
 
-# variation nette
-df_perf_correl = pd.merge(df_valo_correl, df_vers_correl, on=['Portefeuille', 'Date'], how='left').fillna(0)
-df_perf_correl['Perf_Nette'] = df_perf_correl['Variation_Brute'] - df_perf_correl['Versement']
+# on pivote
+df_pivot_valo = df_valo_correl.pivot(index='Date', columns='Portefeuille', values='Valeur')
+df_pivot_vers = df_vers_correl.pivot(index='Date', columns='Portefeuille', values='Versement').fillna(0)
 
-# Pivot pour avoir les portefeuilles en colonnes (nécessaire pour .corr())
-df_pivot_corr = df_perf_correl.pivot(index='Date', columns='Portefeuille', values='Perf_Nette').dropna()
+# rendement relatif net : (Val_t - Vers_t - Val_t-1) / Val_t-1
+df_perf_correl = (df_pivot_valo - df_pivot_vers - df_pivot_valo.shift(1)) / df_pivot_valo.shift(1) # On utilise .shift(1) pour récupérer la valeur du mois précédent
+df_perf_correl = df_perf_correl.replace([np.inf, -np.inf], np.nan).dropna(how='all') # nettoyage (la première ligne sera NaN car pas de t-1)
+
+# liste des portefeuilles choisis
+portefeuilles_correl = pd.unique(df_valo_correl['Portefeuille'])
 
 # la matrice
-corr_matrix = df_pivot_corr.corr()
+corr_matrix = df_perf_correl.corr().fillna(0)
+
+# TO DO :
+# Forcer la diagonale en na
+# Mettre une décimale uniquement
+# travailler le hover
+# xaxis : label en haut
+# mettre les couleurs en daltoniens ou couleurs neutres
+# marges à gauche bizares ?
+# définir un ordre des portefeuilles ?
+# mapping : scenar Air Liquide à travailler
+
+# Le graphique
+synthese_6 = px.imshow(
+    corr_matrix,
+    text_auto=".2f",
+    aspect="auto",
+    color_continuous_scale='RdBu_r', # Rouge (négatif) à Bleu (positif)
+    range_color=[-1, 1],
+    labels=dict(color="Corrélation"),
+    title="<b>Corrélation entre portefeuilles</b>",
+    template="plotly_white"
+)
+
+synthese_6.update_layout(
+    height=height,
+    width=width_col2,
+    margin=dict(l=0, r=0, t=50, b=50),
+    paper_bgcolor='rgba(0,0,0,0)',
+    plot_bgcolor='rgba(0,0,0,0)',
+    font_color="white",
+    xaxis_title="",
+    yaxis_title="",
+    coloraxis_showscale=False # On cache la barre de couleur pour compacter
+)
+
+synthese_6.update_xaxes(type='category', title="", showgrid=False, tickangle=-40) # Rend les distances égales entre barres
 
 
 ### KPIs en haut ###
@@ -1123,10 +1166,19 @@ col5, col6 = st.columns([1.4, 1.1])
 with col5:
     st.plotly_chart(synthese_5, use_container_width=False)
 
+with col6:
+    if len(portefeuilles_correl) > 1:
+        st.plotly_chart(synthese_6, use_container_width=False)
+    else:
+        st.info("Sélectionnez au moins 2 portefeuilles boursiers pour voir les corrélations.")
+
 #st.markdown("<hr style='margin: 0rem 0rem 0.938rem 0rem; border: 0.063rem solid #f0f2f6;'>", unsafe_allow_html=True)
 
 #st.write("### Données brutes du Radar")
 #st.dataframe(df_prod_agg[df_prod_agg['Portefeuille'] == 'PEE'], use_container_width=True)
 #st.dataframe(scores, use_container_width=True)
 #st.dataframe(df_perf, use_container_width=True)
-st.dataframe(corr_matrix, use_container_width=True)
+st.dataframe(df_perf_correl, use_container_width=True)
+
+st.dataframe(df_vers_correl, use_container_width=True)
+st.dataframe(df_valo_correl, use_container_width=True)
