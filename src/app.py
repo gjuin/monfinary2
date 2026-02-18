@@ -329,6 +329,7 @@ def get_all_data():
     df_vers = conn.read(spreadsheet=url, worksheet="data_vers")
     df_map = conn.read(spreadsheet=url, worksheet="mapping")
     df_scenar = conn.read(spreadsheet=url, worksheet="scenar")
+    df_date_creation = conn.read(spreadsheet=url, worksheet="crea_pf")
     
     # Transformation de "Wide" à "Long" (Melt)
     # On garde Produit, Véhicule, Plateforme et on bascule les dates en lignes
@@ -395,13 +396,16 @@ def get_all_data():
     df_scenar['Dimension'] = df_scenar['Dimension'].astype(str).str.strip()
     df_scenar['Sous-Catégorie'] = df_scenar['Sous-Catégorie'].astype(str).str.strip()
 
+    # Nettoyage date_creation
+    df_date_creation['Date_Creation'] = pd.to_datetime(df_date_creation['Date_Creation'], dayfirst=True, errors='coerce')
 
-    return df_long_valo, df_long_vers, df_map, df_scenar
+
+    return df_long_valo, df_long_vers, df_map, df_scenar, df_date_creation
 
 
 
 ##### 3. Récupération des données
-df_valo, df_vers, df_map, df_scenar = get_all_data()
+df_valo, df_vers, df_map, df_scenar, df_date_creation = get_all_data()
 
 
 
@@ -981,10 +985,10 @@ synthese_5 = px.line(
 synthese_5.update_xaxes(type='category', title="", showgrid=False, tickangle=-40) # Rend les distances égales entre barres
 max_perf = df_perf[
         (~df_perf['Portefeuille'].isin(['Compte-Courant','Wallet']))
-        ]['Performence'].max() * 1.1
+        ]['Performence'].max() * 1.2
 min_perf = df_perf[
         (~df_perf['Portefeuille'].isin(['Compte-Courant','Wallet']))
-        ]['Performence'].min() * 1.1
+        ]['Performence'].min() * 1,2
 tick_positions = np.linspace(min_perf, max_perf, 5)
 if mode_discret:
     y_axis_config2 = dict(
@@ -1058,23 +1062,17 @@ portefeuilles_correl = pd.unique(df_valo_correl['Portefeuille'])
 
 # la matrice
 corr_matrix = df_perf_correl.corr().fillna(0)
-
-# TO DO :
-# Forcer la diagonale en na
-# Mettre une décimale uniquement
-# travailler le hover
-# xaxis : label en haut
-# mettre les couleurs en daltoniens ou couleurs neutres
-# marges à gauche bizares ?
-# définir un ordre des portefeuilles ?
-# mapping : scenar Air Liquide à travailler
+#mask = np.triu(np.ones(corr_matrix.shape), k=1).astype(bool) # on prépare un mask pour retirer la moitié nord-est
+np.fill_diagonal(corr_matrix.values, np.nan)
+#corr_matrix = corr_matrix.where(~mask)
+text_values = corr_matrix.round(1).astype(str).replace('nan', '')
 
 # Le graphique
 synthese_6 = px.imshow(
     corr_matrix,
-    text_auto=".2f",
+    text_auto=".1f", # une décimale
     aspect="auto",
-    color_continuous_scale='RdBu_r', # Rouge (négatif) à Bleu (positif)
+    color_continuous_scale='BrBG', # Rouge (négatif) à Bleu (positif) Viridis BrBG Magma PiYG
     range_color=[-1, 1],
     labels=dict(color="Corrélation"),
     title="<b>Corrélation entre portefeuilles</b>",
@@ -1093,7 +1091,25 @@ synthese_6.update_layout(
     coloraxis_showscale=False # On cache la barre de couleur pour compacter
 )
 
-synthese_6.update_xaxes(type='category', title="", showgrid=False, tickangle=-40) # Rend les distances égales entre barres
+synthese_6.update_xaxes(type='category', title="", showgrid=False, tickangle=-40) 
+synthese_6.update_yaxes(type='category', title="", showgrid=False) 
+
+hover_temp = [
+    ["<b>%{x}</b> et <b>%{y}</b> :<br>Coefficient : <b>%{z:.2f}</b><extra></extra>" if not np.isnan(val) else None 
+     for val in row] 
+    for row in corr_matrix.values
+]
+
+synthese_6.update_traces(
+    text=text_values,
+    texttemplate="%{text}",
+    hovertemplate=(
+        "<b>%{x}</b> et <b>%{y}</b> :<br>"
+        "Coefficient : <b>%{z:.2f}</b>"
+        "<extra></extra>"
+    )
+)
+synthese_6.update_traces(hoverinfo="z", selector=dict(type='heatmap'))
 
 
 ### KPIs en haut ###
@@ -1103,6 +1119,108 @@ total_investi = df_vers[
     (df_vers['Portefeuille'].isin(portefeuilles_selectionnes))
 ]['Versement'].sum()
 plus_value_globale = total_patrimoine - total_investi
+perf_globale = (plus_value_globale / total_investi * 100) if total_investi != 0 else 0
+
+
+### Synthese 7 - Performance moyenne et projection  ### 
+
+# 1. Préparation des outils
+# On crée le dictionnaire des dates d'ouverture réelles
+dict_dates = pd.Series(df_date_creation.Date_Creation.values, index=df_date_creation.Portefeuille).to_dict()
+date_lancement_app = pd.to_datetime(df_valo['Date'].min())
+
+# Liste pour stocker les calculs de chaque ligne de chaque portefeuille
+all_cagr_points = []
+
+# 2. On traite chaque portefeuille séparément pour respecter son ancienneté
+for p in portefeuilles_selectionnes:
+    # Récupération des données du portefeuille p
+    df_p_valo = df_valo[df_valo['Portefeuille'] == p].groupby('Date')['Valeur'].sum().reset_index()
+    df_p_vers = df_vers[df_vers['Portefeuille'] == p].groupby('Date')['Versement'].sum().reset_index()
+    
+    if not df_p_valo.empty:
+        # Fusion valo + versements pour ce portefeuille précis
+        df_p = pd.merge(df_p_valo, df_p_vers[['Date', 'Versement']], on='Date', how='left').fillna(0)
+        df_p['Date'] = pd.to_datetime(df_p['Date'])
+        df_p = df_p.sort_values('Date')
+        
+        # Calcul de la base de coût (cumul des versements)
+        df_p['Cumul_Investi'] = df_p['Versement'].cumsum()
+        
+        # Calcul de l'âge réel à chaque date d'observation
+        date_ouverture = pd.to_datetime(dict_dates.get(p, date_lancement_app))
+        df_p['Annees_Reelles'] = (df_p['Date'] - date_ouverture).dt.days / 365.25
+        
+        # Performance brute (Valeur / Investi)
+        df_p['Perf_Brute'] = df_p['Valeur'] / df_p['Cumul_Investi'].clip(lower=1)
+        
+        # CAGR individuel à chaque date : (Ratio ^ (1/temps)) - 1
+        # On clip l'année à 0.1 (36 jours) pour éviter les taux infinis au démarrage
+        df_p['CAGR_Point'] = (df_p['Perf_Brute'] ** (1 / df_p['Annees_Reelles'].clip(lower=0.1))) - 1
+        
+        # On ne garde que les colonnes utiles pour la moyenne finale
+        all_cagr_points.append(df_p[['Date', 'Valeur', 'CAGR_Point']])
+
+# 3. Fusion de tous les points et calcul de la moyenne pondérée globale
+if all_cagr_points:
+    df_global_cagr = pd.concat(all_cagr_points)
+    
+    # Nettoyage des erreurs mathématiques
+    df_global_cagr = df_global_cagr.replace([np.inf, -np.inf], np.nan).dropna(subset=['CAGR_Point'])
+    
+    # CALCUL DU TAUX FINAL : Moyenne de TOUS les points de TOUTES les dates
+    # pondérée par la valeur de chaque point.
+    taux_annuel_proj = (df_global_cagr['CAGR_Point'] * df_global_cagr['Valeur']).sum() / df_global_cagr['Valeur'].sum()
+else:
+    taux_annuel_proj = 0.05 # Par défaut si vide
+
+# 4. Historique global pour le graphique (Somme des valos par date)
+df_hist = df_valo[
+    (df_valo['Portefeuille'].isin(portefeuilles_selectionnes)) & 
+    (pd.to_datetime(df_valo['Date']) <= pd.to_datetime(date_cible))
+].groupby('Date')['Valeur'].sum().reset_index()
+df_hist['Date'] = pd.to_datetime(df_hist['Date'])
+df_hist = df_hist.sort_values('Date')
+
+## projection
+capital_depart = total_patrimoine # On part de la situation actuelle
+dates_proj = [pd.to_datetime(date_cible) + pd.DateOffset(years=i) for i in range(0, 32)]
+valeurs_proj = [capital_depart * (1 + taux_annuel_proj)**i for i in range(0, 32)] # calcul des valeurs futures (Intérêts composés sans nouveaux versements)
+
+df_proj = pd.DataFrame({
+    'Date': dates_proj,
+    'Valeur': valeurs_proj,
+    'Type': 'Projection'
+})
+
+# Le graphique
+synthese_7 = go.Figure()
+
+# Historique
+synthese_7.add_trace(go.Scatter(
+    x=df_hist['Date'], y=df_hist['Valeur'],
+    mode='lines', name='Historique Réel',
+    line=dict(color='#00CC96', width=3),
+    fill='tozeroy', fillcolor='rgba(0, 204, 150, 0.1)'
+))
+
+# Projection
+synthese_7.add_trace(go.Scatter(
+    x=df_proj['Date'], y=df_proj['Valeur'],
+    mode='lines', name=f'Projection à {taux_annuel_proj:.1%}/an',
+    line=dict(color='#636EFA', width=3, dash='dash')
+))
+
+synthese_7.update_layout(
+    title=f"<b>Trajectoire à 30 ans</b>",
+    height=500,
+    paper_bgcolor='rgba(0,0,0,0)',
+    plot_bgcolor='rgba(0,0,0,0)',
+    font_color="white",
+    xaxis=dict(showgrid=False),
+    yaxis=dict(title="Capital (€)", gridcolor='rgba(255,255,255,0.1)'),
+    legend=dict(orientation="h", y=1.1, x=0.5, xanchor="center")
+)
 
 
 ##### 7. Layout des graphique et KPI
@@ -1114,8 +1232,6 @@ if mode_discret:
 else:
     txt_patrimoine = f"{total_patrimoine:,.0f} €".replace(",", " ")
     txt_investi = f"{total_investi:,.0f} €".replace(",", " ")
-    # Calcul du % de performance globale
-    perf_globale = (plus_value_globale / total_investi * 100) if total_investi != 0 else 0
     txt_pv = f"{plus_value_globale:+,.0f} € ({perf_globale:+.1f}%)".replace(",", " ")
 
 # Affichage des KPIs en ligne
@@ -1172,13 +1288,15 @@ with col6:
     else:
         st.info("Sélectionnez au moins 2 portefeuilles boursiers pour voir les corrélations.")
 
+st.plotly_chart(synthese_7, use_container_width=True)
+
 #st.markdown("<hr style='margin: 0rem 0rem 0.938rem 0rem; border: 0.063rem solid #f0f2f6;'>", unsafe_allow_html=True)
 
 #st.write("### Données brutes du Radar")
 #st.dataframe(df_prod_agg[df_prod_agg['Portefeuille'] == 'PEE'], use_container_width=True)
 #st.dataframe(scores, use_container_width=True)
 #st.dataframe(df_perf, use_container_width=True)
-st.dataframe(df_perf_correl, use_container_width=True)
-
-st.dataframe(df_vers_correl, use_container_width=True)
-st.dataframe(df_valo_correl, use_container_width=True)
+#st.dataframe(df_perf_correl, use_container_width=True)
+#st.dataframe(df_vers_correl, use_container_width=True)
+#st.dataframe(df_valo_correl, use_container_width=True)
+st.dataframe(df_p, use_container_width=True)
