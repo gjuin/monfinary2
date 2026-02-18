@@ -83,7 +83,7 @@ st.markdown("""
         line-height: 1.0 !important;
     }
 
-    /* 3. ⚡ CASES À COCHER (OPTIONS uniquement) */
+    /* 3. ⚙️ CASES À COCHER (OPTIONS uniquement) */
     [data-testid="stSidebarUserContent"] div.stCheckbox {
         margin-bottom: -0.313rem !important;
         padding-top: 0.125rem !important;
@@ -543,7 +543,7 @@ if st.sidebar.button("LES QUADRANTS ℹ️", key="btn_quadrant_info", help="Ouvr
 
 #  Item 5 - Exclure ou non les versements dans synthese_3 💸
 st.sidebar.divider()
-st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 0.5rem;'>OPTIONS ⚡</p>", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='font-size: 1.1em; font-weight: bold; color: lightgray; margin-bottom: 0.5rem;'>OPTIONS ⚙️</p>", unsafe_allow_html=True)
 exclure_versements = st.sidebar.toggle("Exclure les versements 💸", value=False)
 
 #  Item 6 - ajout d'un mode discret 🔒
@@ -559,7 +559,7 @@ if not portefeuilles_selectionnes:
 # largeur des graphiques
 width_col1 = 500
 width_col2 = 425
-height = 425
+height = 325
 
 
 #### Synthese 1 - histo empilé par portefeuille ###
@@ -941,95 +941,101 @@ synthese_4.update_layout(
 
 
 ### Synthese 5 - Performence par portefeuille  ### 
-# sommer les versements jusqu'à la date choisie et les dates précédentes
-df_vers_select = df_vers[
-    (df_vers['Date'] <= date_cible) &                           # filtrage dynamique sur la date
-    (df_vers['Portefeuille'].isin(portefeuilles_selectionnes))  # filtrage dynamique sur les portefeuilles
-    & ~(df_vers['Portefeuille'].isin(['Compte-Courant']))
-]
-df_vers_select = df_vers_select.groupby(['Portefeuille','Date'])['Versement'].sum().reset_index()
-df_vers_select = df_vers_select.sort_values(['Portefeuille', 'Date'])
-df_vers_select['Versement_Cumule'] = df_vers_select.groupby('Portefeuille')['Versement'].cumsum() # somme cumulée par portefeuille
+if idx_actuel > 0:
+    # sommer les versements jusqu'à la date choisie et les dates précédentes
+    df_vers_select = df_vers[
+        (df_vers['Date'] <= date_cible) &                           # filtrage dynamique sur la date
+        (df_vers['Portefeuille'].isin(portefeuilles_selectionnes))  # filtrage dynamique sur les portefeuilles
+        & ~(df_vers['Portefeuille'].isin(['Compte-Courant']))
+    ]
+    df_vers_select = df_vers_select.groupby(['Portefeuille','Date'])['Versement'].sum().reset_index()
+    df_vers_select = df_vers_select.sort_values(['Portefeuille', 'Date'])
+    df_vers_select['Versement_Cumule'] = df_vers_select.groupby('Portefeuille')['Versement'].cumsum() # somme cumulée par portefeuille
 
-# sommer les valo à la date choisie et les dates précédentes
-df_valo_select = df_valo[
-    (df_valo['Date'] <= date_cible) &                           # filtrage dynamique sur la date
-    (df_valo['Portefeuille'].isin(portefeuilles_selectionnes))  # filtrage dynamique sur les portefeuilles
-    & ~(df_vers['Portefeuille'].isin(['Compte-Courant']))
-]
-df_valo_select = df_valo_select.groupby(['Portefeuille','Date'])['Valeur'].sum().reset_index()
+    # sommer les valo à la date choisie et les dates précédentes
+    df_valo_select = df_valo[
+        (df_valo['Date'] <= date_cible) &                           # filtrage dynamique sur la date
+        (df_valo['Portefeuille'].isin(portefeuilles_selectionnes))  # filtrage dynamique sur les portefeuilles
+        & ~(df_vers['Portefeuille'].isin(['Compte-Courant']))
+    ]
+    df_valo_select = df_valo_select.groupby(['Portefeuille','Date'])['Valeur'].sum().reset_index()
 
-# merge
-df_perf = pd.merge(df_valo_select, df_vers_select, on=["Portefeuille","Date"])
+    # merge
+    df_perf = pd.merge(df_valo_select, df_vers_select, on=["Portefeuille","Date"])
 
-# calcul de perf
-df_perf['G_P'] = df_perf['Valeur'] - df_perf['Versement_Cumule']
-df_perf['Performence'] = df_perf['G_P']/df_perf['Versement_Cumule'] 
-df_perf['Date_Labels'] = pd.to_datetime(df_perf['Date']).dt.strftime('%d/%m/%Y') # reconversion date python puis en charactères
+    # calcul de perf
+    df_perf['G_P'] = df_perf['Valeur'] - df_perf['Versement_Cumule']
+    df_perf['Performence'] = df_perf['G_P']/df_perf['Versement_Cumule'] 
+    df_perf['Date_Labels'] = pd.to_datetime(df_perf['Date']).dt.strftime('%d/%m/%Y') # reconversion date python puis en charactères
 
-# Création du graphique en courbe
-synthese_5 = px.line(
-    df_perf,
-    x='Date_Labels',
-    y=['Performence'], 
-    color='Portefeuille',
-    color_discrete_map = couleurs_portefeuille,
-    category_orders={"Portefeuille": ordre_portefeuille},
-    title="<b>Performence par portefeuille</b>",
-    template="plotly_white",
-    markers=False,
-    line_shape='spline'
-)
-
-# config des axes : suppression du grid, des labels, formats...
-synthese_5.update_xaxes(type='category', title="", showgrid=False, tickangle=-40) # Rend les distances égales entre barres
-max_perf = df_perf[
-        (~df_perf['Portefeuille'].isin(['Compte-Courant','Wallet']))
-        ]['Performence'].max() * 1.2
-min_perf = df_perf[
-        (~df_perf['Portefeuille'].isin(['Compte-Courant','Wallet']))
-        ]['Performence'].min() * 1,2
-tick_positions = np.linspace(min_perf, max_perf, 5)
-if mode_discret:
-    y_axis_config2 = dict(
-        range=[min_perf, max_perf],
-        tickvals=tick_positions,
-        ticktext=["•••• %"] * 5 , 
-        title="",
-        showgrid=False,
-        side="right"
+    # Création du graphique en courbe
+    synthese_5 = px.line(
+        df_perf,
+        x='Date_Labels',
+        y=['Performence'], 
+        color='Portefeuille',
+        color_discrete_map = couleurs_portefeuille,
+        category_orders={"Portefeuille": ordre_portefeuille},
+        title="<b>Performence par portefeuille</b>",
+        template="plotly_white",
+        markers=False,
+        line_shape='spline'
     )
+
+    # config des axes : suppression du grid, des labels, formats...
+    synthese_5.update_xaxes(type='category', title="", showgrid=False, tickangle=-40) # Rend les distances égales entre barres
+    max_perf = df_perf[
+            (~df_perf['Portefeuille'].isin(['Compte-Courant','Wallet']))
+            ]['Performence'].max() * 1.2
+    min_perf = df_perf[
+            (~df_perf['Portefeuille'].isin(['Compte-Courant','Wallet']))
+            ]['Performence'].min() * 1,2
+    tick_positions = np.linspace(min_perf, max_perf, 5)
+    if mode_discret:
+        y_axis_config2 = dict(
+            range=[min_perf, max_perf],
+            tickvals=tick_positions,
+            ticktext=["•••• %"] * 5 , 
+            title="",
+            showgrid=False,
+            side="right"
+        )
+    else:
+        y_axis_config2 = dict(
+            range=[min_perf, max_perf],
+            title="",
+            showgrid=False,
+            side="right",
+            tickformat=".1%"
+        )
+
+    synthese_5.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=0, r=0, t=50, b=50), # les marges de zone de dessin 
+        font_color="white",
+        hovermode="closest", 
+        yaxis=y_axis_config2,
+        height= height,
+        width = width_col1,
+        showlegend=False,
+        legend=dict(orientation="v",
+            yanchor="top", y=0.9, 
+            xanchor="right", x=-0.05,
+            traceorder ="reversed", #normal
+            title="")
+    )
+    synthese_5.update_traces(
+        line=dict(width=3, shape='spline', smoothing=1.3),
+        
+        hovertemplate="<b>%{fullData.name}</b> : •••• %<extra></extra>" if mode_discret 
+        else "<b>%{fullData.name}</b> : %{y:.1%}<extra></extra>"
+    )
+
 else:
-    y_axis_config2 = dict(
-        range=[min_perf, max_perf],
-        title="",
-        showgrid=False,
-        side="right",
-        tickformat=".1%"
-    )
-
-synthese_5.update_layout(
-    paper_bgcolor='rgba(0,0,0,0)',
-    plot_bgcolor='rgba(0,0,0,0)',
-    margin=dict(l=0, r=0, t=50, b=50), # les marges de zone de dessin 
-    font_color="white",
-    hovermode="closest", 
-    yaxis=y_axis_config2,
-    height= height,
-    width = width_col1,
-    showlegend=False,
-    legend=dict(orientation="v",
-        yanchor="top", y=0.9, 
-        xanchor="right", x=-0.05,
-        traceorder ="reversed", #normal
-        title="")
-)
-synthese_5.update_traces(
-    line=dict(width=3, shape='spline', smoothing=1.3),
-    
-    hovertemplate="<b>%{fullData.name}</b> : •••• %<extra></extra>" if mode_discret 
-    else "<b>%{fullData.name}</b> : %{y:.1%}<extra></extra>"
-)
+    # Si c'est la première date, on s'assure que df_delta est vide pour le message final
+    df_delta = pd.DataFrame()
+    synthese_5 = None
 
 
 ### Synthese 6 - Matrice de corrélation  ### 
@@ -1124,74 +1130,64 @@ perf_globale = (plus_value_globale / total_investi * 100) if total_investi != 0 
 
 ### Synthese 7 - Performance moyenne et projection  ### 
 
-# 1. Préparation des outils
-# On crée le dictionnaire des dates d'ouverture réelles
+# 1. Outils et préparation
 dict_dates = pd.Series(df_date_creation.Date_Creation.values, index=df_date_creation.Portefeuille).to_dict()
 date_lancement_app = pd.to_datetime(df_valo['Date'].min())
+ts_cible = pd.to_datetime(date_cible)
 
-# Liste pour stocker les calculs de chaque ligne de chaque portefeuille
-all_cagr_points = []
+# Liste pour stocker les DataFrames de projection de chaque portefeuille
+all_projections = []
+# Liste pour l'historique global (pour le graphique)
+all_hist = []
 
-# 2. On traite chaque portefeuille séparément pour respecter son ancienneté
+# 2. Boucle de calcul par portefeuille
 for p in portefeuilles_selectionnes:
-    # Récupération des données du portefeuille p
-    df_p_valo = df_valo[df_valo['Portefeuille'] == p].groupby('Date')['Valeur'].sum().reset_index()
-    df_p_vers = df_vers[df_vers['Portefeuille'] == p].groupby('Date')['Versement'].sum().reset_index()
+    # A. Historique et calcul du CAGR spécifique
+    df_p_valo = df_valo[(df_valo['Portefeuille'] == p) & (pd.to_datetime(df_valo['Date']) <= ts_cible)].groupby('Date')['Valeur'].sum().reset_index()
+    df_p_vers = df_vers[(df_vers['Portefeuille'] == p) & (pd.to_datetime(df_vers['Date']) <= ts_cible)].groupby('Date')['Versement'].sum().reset_index()
     
     if not df_p_valo.empty:
-        # Fusion valo + versements pour ce portefeuille précis
-        df_p = pd.merge(df_p_valo, df_p_vers[['Date', 'Versement']], on='Date', how='left').fillna(0)
+        df_p = pd.merge(df_p_valo, df_p_vers, on='Date', how='left').fillna(0)
         df_p['Date'] = pd.to_datetime(df_p['Date'])
         df_p = df_p.sort_values('Date')
         
-        # Calcul de la base de coût (cumul des versements)
+        # Calcul du CAGR historique moyen (pondéré par la valeur du portefeuille au fil du temps)
         df_p['Cumul_Investi'] = df_p['Versement'].cumsum()
-        
-        # Calcul de l'âge réel à chaque date d'observation
         date_ouverture = pd.to_datetime(dict_dates.get(p, date_lancement_app))
         df_p['Annees_Reelles'] = (df_p['Date'] - date_ouverture).dt.days / 365.25
-        
-        # Performance brute (Valeur / Investi)
         df_p['Perf_Brute'] = df_p['Valeur'] / df_p['Cumul_Investi'].clip(lower=1)
-        
-        # CAGR individuel à chaque date : (Ratio ^ (1/temps)) - 1
-        # On clip l'année à 0.1 (36 jours) pour éviter les taux infinis au démarrage
         df_p['CAGR_Point'] = (df_p['Perf_Brute'] ** (1 / df_p['Annees_Reelles'].clip(lower=0.1))) - 1
         
-        # On ne garde que les colonnes utiles pour la moyenne finale
-        all_cagr_points.append(df_p[['Date', 'Valeur', 'CAGR_Point']])
+        # Nettoyage des taux aberrants
+        df_p = df_p.replace([np.inf, -np.inf], np.nan).dropna(subset=['CAGR_Point'])
+        
+        # Le taux de projection propre à CE portefeuille (moyenne pondérée historique)
+        cagr_p_moyen = (df_p['CAGR_Point'] * df_p['Valeur']).sum() / df_p['Valeur'].sum()
+        
+        # B. Création de la trajectoire future pour CE portefeuille
+        cap_actuel_p = df_p['Valeur'].iloc[-1]
+        dates_f = [ts_cible + pd.DateOffset(years=i) for i in range(0, 31)]
+        # Formule : Capital * (1+r)^n (Versements à venir = 0 pour l'instant)
+        valeurs_f = [cap_actuel_p * (1 + cagr_p_moyen)**i for i in range(0, 31)]
+        
+        df_proj_p = pd.DataFrame({'Date': dates_f, 'Valeur': valeurs_f})
+        all_projections.append(df_proj_p)
+        all_hist.append(df_p[['Date', 'Valeur']])
 
-# 3. Fusion de tous les points et calcul de la moyenne pondérée globale
-if all_cagr_points:
-    df_global_cagr = pd.concat(all_cagr_points)
-    
-    # Nettoyage des erreurs mathématiques
-    df_global_cagr = df_global_cagr.replace([np.inf, -np.inf], np.nan).dropna(subset=['CAGR_Point'])
-    
-    # CALCUL DU TAUX FINAL : Moyenne de TOUS les points de TOUTES les dates
-    # pondérée par la valeur de chaque point.
-    taux_annuel_proj = (df_global_cagr['CAGR_Point'] * df_global_cagr['Valeur']).sum() / df_global_cagr['Valeur'].sum()
-else:
-    taux_annuel_proj = 0.05 # Par défaut si vide
+# 3. Aggregation des résultats pour le graphique
+# Somme des historiques
+df_hist = pd.concat(all_hist).groupby('Date')['Valeur'].sum().reset_index()
+df_hist['Type'] = 'Historique'
 
-# 4. Historique global pour le graphique (Somme des valos par date)
-df_hist = df_valo[
-    (df_valo['Portefeuille'].isin(portefeuilles_selectionnes)) & 
-    (pd.to_datetime(df_valo['Date']) <= pd.to_datetime(date_cible))
-].groupby('Date')['Valeur'].sum().reset_index()
-df_hist['Date'] = pd.to_datetime(df_hist['Date'])
-df_hist = df_hist.sort_values('Date')
+# Somme des projections (la magie opère ici)
+df_proj = pd.concat(all_projections).groupby('Date')['Valeur'].sum().reset_index()
+df_proj['Type'] = 'Projection'
 
-## projection
-capital_depart = total_patrimoine # On part de la situation actuelle
-dates_proj = [pd.to_datetime(date_cible) + pd.DateOffset(years=i) for i in range(0, 32)]
-valeurs_proj = [capital_depart * (1 + taux_annuel_proj)**i for i in range(0, 32)] # calcul des valeurs futures (Intérêts composés sans nouveaux versements)
-
-df_proj = pd.DataFrame({
-    'Date': dates_proj,
-    'Valeur': valeurs_proj,
-    'Type': 'Projection'
-})
+# Calcul d'un taux moyen affiché (pour la légende uniquement)
+# C'est un taux implicite : (Total_Final / Total_Initial)^(1/30) - 1
+val_init = df_proj['Valeur'].iloc[0]
+val_final = df_proj['Valeur'].iloc[-1]
+taux_implicite = (val_final / val_init)**(1/30) - 1 if val_init > 0 else 0
 
 # Le graphique
 synthese_7 = go.Figure()
@@ -1207,16 +1203,17 @@ synthese_7.add_trace(go.Scatter(
 # Projection
 synthese_7.add_trace(go.Scatter(
     x=df_proj['Date'], y=df_proj['Valeur'],
-    mode='lines', name=f'Projection à {taux_annuel_proj:.1%}/an',
+    mode='lines', name=f'Projection à {taux_implicite:.1%}/an',
     line=dict(color='#636EFA', width=3, dash='dash')
 ))
 
 synthese_7.update_layout(
     title=f"<b>Trajectoire à 30 ans</b>",
-    height=500,
     paper_bgcolor='rgba(0,0,0,0)',
     plot_bgcolor='rgba(0,0,0,0)',
     font_color="white",
+    height= height+100,
+    #width = width_col1,
     xaxis=dict(showgrid=False),
     yaxis=dict(title="Capital (€)", gridcolor='rgba(255,255,255,0.1)'),
     legend=dict(orientation="h", y=1.1, x=0.5, xanchor="center")
@@ -1262,7 +1259,7 @@ with col1:
     st.plotly_chart(synthese_1, use_container_width=False)
 with col2:
     if not df_delta.empty:
-        st.plotly_chart(synthese_3, use_container_width=False) # Affichage sur toute la largeur sous les deux autres graphiques
+        st.plotly_chart(synthese_3, use_container_width=False) 
     else:
         # Si c'est vide (première date), on affiche un petit message discret
         st.info("Sélectionnez une date ultérieure pour voir les mouvements par rapport au mois précédent.")
@@ -1280,7 +1277,11 @@ st.markdown("<hr style='margin: 0rem 0rem 0.938rem 0rem; border: 0.063rem solid 
 col5, col6 = st.columns([1.4, 1.1])
 
 with col5:
-    st.plotly_chart(synthese_5, use_container_width=False)
+    if not df_delta.empty:
+        st.plotly_chart(synthese_5, use_container_width=False)
+    else:
+        # Si c'est vide (première date), on affiche un petit message discret
+        st.info("Sélectionnez une date ultérieure pour voir les performances d'une date à l'autre.")
 
 with col6:
     if len(portefeuilles_correl) > 1:
@@ -1299,4 +1300,4 @@ st.plotly_chart(synthese_7, use_container_width=True)
 #st.dataframe(df_perf_correl, use_container_width=True)
 #st.dataframe(df_vers_correl, use_container_width=True)
 #st.dataframe(df_valo_correl, use_container_width=True)
-st.dataframe(df_p, use_container_width=True)
+#st.dataframe(df_p, use_container_width=True)
