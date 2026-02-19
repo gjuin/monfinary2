@@ -194,6 +194,9 @@ st.markdown("""
 
     /* 9. BOUTON ICONE QUADRANTS */
 
+    /* 10. PROJECTION : TABLEAU DE PARAMETRAGE */
+    
+
     /* 13. UNIFORMISATION DES ESPACEMENTS APRÈS TITRES */
     
     </style>
@@ -1128,98 +1131,6 @@ plus_value_globale = total_patrimoine - total_investi
 perf_globale = (plus_value_globale / total_investi * 100) if total_investi != 0 else 0
 
 
-### Synthese 7 - Performance moyenne et projection  ### 
-
-# 1. Outils et préparation
-dict_dates = pd.Series(df_date_creation.Date_Creation.values, index=df_date_creation.Portefeuille).to_dict()
-date_lancement_app = pd.to_datetime(df_valo['Date'].min())
-ts_cible = pd.to_datetime(date_cible)
-
-# Liste pour stocker les DataFrames de projection de chaque portefeuille
-all_projections = []
-# Liste pour l'historique global (pour le graphique)
-all_hist = []
-
-# 2. Boucle de calcul par portefeuille
-for p in portefeuilles_selectionnes:
-    # A. Historique et calcul du CAGR spécifique
-    df_p_valo = df_valo[(df_valo['Portefeuille'] == p) & (pd.to_datetime(df_valo['Date']) <= ts_cible)].groupby('Date')['Valeur'].sum().reset_index()
-    df_p_vers = df_vers[(df_vers['Portefeuille'] == p) & (pd.to_datetime(df_vers['Date']) <= ts_cible)].groupby('Date')['Versement'].sum().reset_index()
-    
-    if not df_p_valo.empty:
-        df_p = pd.merge(df_p_valo, df_p_vers, on='Date', how='left').fillna(0)
-        df_p['Date'] = pd.to_datetime(df_p['Date'])
-        df_p = df_p.sort_values('Date')
-        
-        # Calcul du CAGR historique moyen (pondéré par la valeur du portefeuille au fil du temps)
-        df_p['Cumul_Investi'] = df_p['Versement'].cumsum()
-        date_ouverture = pd.to_datetime(dict_dates.get(p, date_lancement_app))
-        df_p['Annees_Reelles'] = (df_p['Date'] - date_ouverture).dt.days / 365.25
-        df_p['Perf_Brute'] = df_p['Valeur'] / df_p['Cumul_Investi'].clip(lower=1)
-        df_p['CAGR_Point'] = (df_p['Perf_Brute'] ** (1 / df_p['Annees_Reelles'].clip(lower=0.1))) - 1
-        
-        # Nettoyage des taux aberrants
-        df_p = df_p.replace([np.inf, -np.inf], np.nan).dropna(subset=['CAGR_Point'])
-        
-        # Le taux de projection propre à CE portefeuille (moyenne pondérée historique)
-        cagr_p_moyen = (df_p['CAGR_Point'] * df_p['Valeur']).sum() / df_p['Valeur'].sum()
-        
-        # B. Création de la trajectoire future pour CE portefeuille
-        cap_actuel_p = df_p['Valeur'].iloc[-1]
-        dates_f = [ts_cible + pd.DateOffset(years=i) for i in range(0, 31)]
-        # Formule : Capital * (1+r)^n (Versements à venir = 0 pour l'instant)
-        valeurs_f = [cap_actuel_p * (1 + cagr_p_moyen)**i for i in range(0, 31)]
-        
-        df_proj_p = pd.DataFrame({'Date': dates_f, 'Valeur': valeurs_f})
-        all_projections.append(df_proj_p)
-        all_hist.append(df_p[['Date', 'Valeur']])
-
-# 3. Aggregation des résultats pour le graphique
-# Somme des historiques
-df_hist = pd.concat(all_hist).groupby('Date')['Valeur'].sum().reset_index()
-df_hist['Type'] = 'Historique'
-
-# Somme des projections (la magie opère ici)
-df_proj = pd.concat(all_projections).groupby('Date')['Valeur'].sum().reset_index()
-df_proj['Type'] = 'Projection'
-
-# Calcul d'un taux moyen affiché (pour la légende uniquement)
-# C'est un taux implicite : (Total_Final / Total_Initial)^(1/30) - 1
-val_init = df_proj['Valeur'].iloc[0]
-val_final = df_proj['Valeur'].iloc[-1]
-taux_implicite = (val_final / val_init)**(1/30) - 1 if val_init > 0 else 0
-
-# Le graphique
-synthese_7 = go.Figure()
-
-# Historique
-synthese_7.add_trace(go.Scatter(
-    x=df_hist['Date'], y=df_hist['Valeur'],
-    mode='lines', name='Historique Réel',
-    line=dict(color='#00CC96', width=3),
-    fill='tozeroy', fillcolor='rgba(0, 204, 150, 0.1)'
-))
-
-# Projection
-synthese_7.add_trace(go.Scatter(
-    x=df_proj['Date'], y=df_proj['Valeur'],
-    mode='lines', name=f'Projection à {taux_implicite:.1%}/an',
-    line=dict(color='#636EFA', width=3, dash='dash')
-))
-
-synthese_7.update_layout(
-    title=f"<b>Trajectoire à 30 ans</b>",
-    paper_bgcolor='rgba(0,0,0,0)',
-    plot_bgcolor='rgba(0,0,0,0)',
-    font_color="white",
-    height= height+100,
-    #width = width_col1,
-    xaxis=dict(showgrid=False),
-    yaxis=dict(title="Capital (€)", gridcolor='rgba(255,255,255,0.1)'),
-    legend=dict(orientation="h", y=1.1, x=0.5, xanchor="center")
-)
-
-
 ##### 7. Layout des graphique et KPI
 # Gestion du texte pour le mode discret
 if mode_discret:
@@ -1256,10 +1167,10 @@ st.markdown(
 col1, col2 = st.columns([1.4, 1.1]) 
 
 with col1:
-    st.plotly_chart(synthese_1, use_container_width=False)
+    st.plotly_chart(synthese_1, use_container_width=True)
 with col2:
     if not df_delta.empty:
-        st.plotly_chart(synthese_3, use_container_width=False) 
+        st.plotly_chart(synthese_3, use_container_width=True) 
     else:
         # Si c'est vide (première date), on affiche un petit message discret
         st.info("Sélectionnez une date ultérieure pour voir les mouvements par rapport au mois précédent.")
@@ -1268,28 +1179,27 @@ st.markdown("<hr style='margin: 0rem 0rem 0.938rem 0rem; border: 0.063rem solid 
 col3, col4 = st.columns([1.4, 1.1])
 
 with col3:
-    st.plotly_chart(synthese_4, use_container_width=False)
+    st.plotly_chart(synthese_4, use_container_width=True)
 
 with col4:
-    st.plotly_chart(synthese_2, use_container_width=False)
+    st.plotly_chart(synthese_2, use_container_width=True)
 
 st.markdown("<hr style='margin: 0rem 0rem 0.938rem 0rem; border: 0.063rem solid #f0f2f6;'>", unsafe_allow_html=True)
 col5, col6 = st.columns([1.4, 1.1])
 
 with col5:
     if not df_delta.empty:
-        st.plotly_chart(synthese_5, use_container_width=False)
+        st.plotly_chart(synthese_5, use_container_width=True)
     else:
         # Si c'est vide (première date), on affiche un petit message discret
         st.info("Sélectionnez une date ultérieure pour voir les performances d'une date à l'autre.")
 
 with col6:
     if len(portefeuilles_correl) > 1:
-        st.plotly_chart(synthese_6, use_container_width=False)
+        st.plotly_chart(synthese_6, use_container_width=True)
     else:
         st.info("Sélectionnez au moins 2 portefeuilles boursiers pour voir les corrélations.")
 
-st.plotly_chart(synthese_7, use_container_width=True)
 
 #st.markdown("<hr style='margin: 0rem 0rem 0.938rem 0rem; border: 0.063rem solid #f0f2f6;'>", unsafe_allow_html=True)
 
@@ -1301,3 +1211,155 @@ st.plotly_chart(synthese_7, use_container_width=True)
 #st.dataframe(df_vers_correl, use_container_width=True)
 #st.dataframe(df_valo_correl, use_container_width=True)
 #st.dataframe(df_p, use_container_width=True)
+
+
+
+##### 8. Synthese 7 - Performance moyenne et projection
+
+# 0. Initialisation des outils et filtres
+dict_dates = pd.Series(df_date_creation.Date_Creation.values, index=df_date_creation.Portefeuille).to_dict()
+date_lancement_app = pd.to_datetime(df_valo['Date'].min())
+ts_cible = pd.to_datetime(date_cible)
+exclure_supports = ["Compte-Courant"] # Liste d'exclusion pour le tableau
+
+# Boutons de réinitialisation dans la sidebar
+if st.sidebar.button("🔄 Réinitialiser les Taux"):
+    if 'params_proj' in st.session_state:
+        del st.session_state.params_proj
+
+# 1. Calcul des CAGR historiques pour initialiser le tableau
+calculs_p = []
+for p in portefeuilles_selectionnes:
+    df_p_v = df_valo[(df_valo['Portefeuille'] == p) & (pd.to_datetime(df_valo['Date']) <= ts_cible)].groupby('Date')['Valeur'].sum().reset_index()
+    df_p_vers = df_vers[(df_vers['Portefeuille'] == p) & (pd.to_datetime(df_vers['Date']) <= ts_cible)].groupby('Date')['Versement'].sum().reset_index()
+    
+    if not df_p_v.empty:
+        df_merged = pd.merge(df_p_v, df_p_vers, on='Date', how='left').fillna(0)
+        df_merged['Date'] = pd.to_datetime(df_merged['Date'])
+        df_merged['Cumul_Investi'] = df_merged['Versement'].cumsum()
+        date_ouvert = pd.to_datetime(dict_dates.get(p, date_lancement_app))
+        df_merged['Annees'] = (df_merged['Date'] - date_ouvert).dt.days / 365.25
+        df_merged['Perf'] = df_merged['Valeur'] / df_merged['Cumul_Investi'].clip(lower=1)
+        df_merged['CAGR'] = (df_merged['Perf'] ** (1 / df_merged['Annees'].clip(lower=0.1))) - 1
+        
+        cagr_hist = (df_merged['CAGR'] * df_merged['Valeur']).sum() / df_merged['Valeur'].sum()
+        val_actuelle = df_merged['Valeur'].iloc[-1]
+        
+        calculs_p.append({
+            "Portefeuille": p,
+            "Valeur Actuelle": val_actuelle,
+            "Taux": round(cagr_hist * 100, 2),
+            "Mensualité": 0.0
+        })
+
+# 2. Interface : Colonne Graphe (3) et Colonne Paramètres (1)
+col_g, col_p = st.columns([2.5, 1])
+
+with col_p:
+    st.markdown("##### ⚙️ Paramètres")
+    df_init = pd.DataFrame(calculs_p)
+    # On filtre les supports exclus du tableau de paramétrage
+    df_init = df_init[~df_init['Portefeuille'].isin(exclure_supports)]
+    
+    # Utilisation du Toggle pour remettre les versements à 0
+    if exclure_versements: # Ton bouton toggle existant
+        df_init["Mensualité"] = 0.0
+
+    # Éditeur de données interactif
+    edited_df = st.data_editor(
+        df_init[["Portefeuille", "Taux", "Mensualité"]],
+        column_config={
+            "Portefeuille": st.column_config.Column(disabled=True,width=30),
+            "Taux": st.column_config.NumberColumn(format="%.1f%%",width=11),
+            "Mensualité": st.column_config.NumberColumn(format="%d €",width=16)
+        },
+        hide_index=True,
+        key="params_proj",
+        use_container_width=True  # S'adapte à la colonne
+    )
+
+# 3. Moteur de projection (Calcul mois par mois)
+all_projections = []
+all_hist = []
+
+# Dictionnaire des réglages modifiés
+settings = edited_df.set_index('Portefeuille').to_dict('index')
+
+for p in portefeuilles_selectionnes:
+    # Récupération historique
+    df_h = df_valo[(df_valo['Portefeuille'] == p) & (pd.to_datetime(df_valo['Date']) <= ts_cible)].groupby('Date')['Valeur'].sum().reset_index()
+    if df_h.empty: continue
+    all_hist.append(df_h)
+    
+    # Paramètres de projection
+    # Si le portefeuille est exclu du tableau, on prend CAGR=0 et Mensu=0
+    p_settings = settings.get(p, {"Taux": 0.0, "Mensualité": 0.0})
+    taux_annuel = p_settings["Taux"] / 100
+    mensu = p_settings["Mensualité"]
+    
+    # Simulation sur 360 mois (30 ans)
+    cap = df_h['Valeur'].iloc[-1]
+    dates_f = [ts_cible + pd.DateOffset(months=m) for m in range(0, 361)]
+    valeurs_f = []
+    
+    # Taux mensuel équivalent
+    r_mensuel = (1 + taux_annuel)**(1/12) - 1
+    
+    current_val = cap
+    for m in range(361):
+        valeurs_f.append(current_val)
+        # Croissance du capital + versement en fin de mois
+        current_val = current_val * (1 + r_mensuel) + mensu
+        
+    all_projections.append(pd.DataFrame({'Date': dates_f, 'Valeur': valeurs_f}))
+
+# 4. Aggreger et Afficher
+df_hist_total = pd.concat(all_hist).groupby('Date')['Valeur'].sum().reset_index()
+df_proj_total = pd.concat(all_projections).groupby('Date')['Valeur'].sum().reset_index()
+
+# Calcul indicateurs pour le titre
+cap_final = df_proj_total['Valeur'].iloc[-1]/1000
+total_investi = (df_hist_total['Valeur'].iloc[-1] + (edited_df["Mensualité"].sum() * 360))/1000
+gain_interets = cap_final - total_investi
+cap_init = df_proj_total['Valeur'].iloc[0]/1000
+
+# On calcule le taux implicite global (CAGR moyen de la projection)
+taux_implicite = (cap_final / cap_init)**(1/30) - 1 if cap_init > 0 else 0
+
+# Le graphique
+synthese_7 = go.Figure()
+
+# Historique
+synthese_7.add_trace(go.Scatter(
+    x=df_hist_total['Date'], y=df_hist_total['Valeur'],
+    mode='lines', name='Historique',
+    line=dict(color='#00CC96', width=3),
+    fill='tozeroy', fillcolor='rgba(0, 204, 150, 0.1)'
+))
+
+# Projection
+synthese_7.add_trace(go.Scatter(
+    x=df_proj_total['Date'], y=df_proj_total['Valeur'],
+    mode='lines', name=f'Projection à {taux_implicite:.1%}/an',
+    line=dict(color='#636EFA', width=3, dash='dash'),
+    fill='tozeroy', fillcolor='rgba(99, 110, 250, 0.1)'
+))
+
+synthese_7.update_layout(
+    title=f"<b>Trajectoire sur 30 ans</b><br><span style='font-size:12px; color:#A9A9A9;'>Taux implicite : {taux_implicite:.1%}/an | Final : {round(cap_final,-1):,.0f} k€ | Dont intérêts : {round(gain_interets,-1):,.0f} k€ | Dont mensualités : {round(total_investi,-1):,.0f} k€ </span>".replace(",", " "),
+    title_x= 0,
+    title_y= 0.95,
+    paper_bgcolor='rgba(0,0,0,0)',
+    plot_bgcolor='rgba(0,0,0,0)',
+    font_color="white",
+    margin=dict(t=80,b=10),
+    height= height+120,
+    #width = width_col1,
+    xaxis=dict(showgrid=False),
+    yaxis=dict(title="", gridcolor='rgba(255,255,255,0.1)'),
+    legend=dict(orientation="h", y=1.1, x=0.5, xanchor="center"),
+    showlegend=False
+)
+
+with col_g:
+    st.plotly_chart(synthese_7, use_container_width=True)
