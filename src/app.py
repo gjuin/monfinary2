@@ -7,6 +7,7 @@ from streamlit_gsheets import GSheetsConnection
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
+import numpy_financial as npf
 
 # largeur d'écran streamlit
 st.set_page_config(layout="wide")
@@ -1213,6 +1214,8 @@ with col6:
 #st.dataframe(df_p, use_container_width=True)
 
 
+# MODE DISCRET
+# le hover
 
 ##### 8. Synthese 7 - Performance moyenne et projection
 
@@ -1221,11 +1224,6 @@ dict_dates = pd.Series(df_date_creation.Date_Creation.values, index=df_date_crea
 date_lancement_app = pd.to_datetime(df_valo['Date'].min())
 ts_cible = pd.to_datetime(date_cible)
 exclure_supports = ["Compte-Courant"] # Liste d'exclusion pour le tableau
-
-# Boutons de réinitialisation dans la sidebar
-if st.sidebar.button("🔄 Réinitialiser les Taux"):
-    if 'params_proj' in st.session_state:
-        del st.session_state.params_proj
 
 # 1. Calcul des CAGR historiques pour initialiser le tableau
 calculs_p = []
@@ -1256,15 +1254,12 @@ for p in portefeuilles_selectionnes:
 col_g, col_p = st.columns([2.5, 1])
 
 with col_p:
-    st.markdown("##### ⚙️ Paramètres")
+    st.markdown("<span style='font-size:16px;'><b>⚙️ Ajustez vos paramètres</b></span>", unsafe_allow_html=True)
+
     df_init = pd.DataFrame(calculs_p)
     # On filtre les supports exclus du tableau de paramétrage
     df_init = df_init[~df_init['Portefeuille'].isin(exclure_supports)]
     
-    # Utilisation du Toggle pour remettre les versements à 0
-    if exclure_versements: # Ton bouton toggle existant
-        df_init["Mensualité"] = 0.0
-
     # Éditeur de données interactif
     edited_df = st.data_editor(
         df_init[["Portefeuille", "Taux", "Mensualité"]],
@@ -1323,8 +1318,18 @@ total_investi = (df_hist_total['Valeur'].iloc[-1] + (edited_df["Mensualité"].su
 gain_interets = cap_final - total_investi
 cap_init = df_proj_total['Valeur'].iloc[0]/1000
 
-# On calcule le taux implicite global (CAGR moyen de la projection)
+# On calcule le taux implicite global (CAGR moyen de la projection) - inclut les versements !
 taux_implicite = (cap_final / cap_init)**(1/30) - 1 if cap_init > 0 else 0
+
+# Calcul du TRI : Taux de Rendement Interne - exclut les versements 
+# On prépare la liste des flux (cash flows)
+flux = [-cap_init*1000] # On part du capital initial comme un investissement (négatif)
+mensu_totale = edited_df["Mensualité"].sum() # On ajoute chaque mensualité totale pendant 360 mois (négatif)
+flux.extend([-mensu_totale] * 360)
+
+flux[-1] += cap_final*1000 # Le dernier mois, on ajoute la valeur finale du patrimoine (positif)
+TRI_mensuel = npf.irr(flux) # Calcul du TRI mensuel
+TRI_annuel = (1 + TRI_mensuel)**12 - 1 # Annualisation du TRI
 
 # Le graphique
 synthese_7 = go.Figure()
@@ -1346,13 +1351,18 @@ synthese_7.add_trace(go.Scatter(
 ))
 
 synthese_7.update_layout(
-    title=f"<b>Trajectoire sur 30 ans</b><br><span style='font-size:12px; color:#A9A9A9;'>Taux implicite : {taux_implicite:.1%}/an | Final : {round(cap_final,-1):,.0f} k€ | Dont intérêts : {round(gain_interets,-1):,.0f} k€ | Dont mensualités : {round(total_investi,-1):,.0f} k€ </span>".replace(",", " "),
+    title=f"<b>Trajectoire sur 30 ans</b><br>"
+      f"<span style='font-size:12px; color:#A9A9A9;'>"
+      f"Rendements : {TRI_annuel:.1%}/an | Patrimoine futur : {round(cap_final,-1):,.0f} k€<br>" # ou taux_implicite ?
+      f"Dont plus-values : {round(gain_interets,-1):,.0f} k€ | "
+      f"Dont contribution : {round(total_investi,-1):,.0f} k€ ({total_investi/cap_final*100:.0f}%)"
+      f"</span>".replace(",", " "),
     title_x= 0,
-    title_y= 0.95,
+    title_y= 0.96,
     paper_bgcolor='rgba(0,0,0,0)',
     plot_bgcolor='rgba(0,0,0,0)',
     font_color="white",
-    margin=dict(t=80,b=10),
+    margin=dict(t=60,b=10),
     height= height+120,
     #width = width_col1,
     xaxis=dict(showgrid=False),
