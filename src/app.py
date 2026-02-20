@@ -988,13 +988,17 @@ if idx_actuel > 0:
 
     # config des axes : suppression du grid, des labels, formats...
     synthese_5.update_xaxes(type='category', title="", showgrid=False, tickangle=-40) # Rend les distances égales entre barres
+    
     max_perf = df_perf[
             (~df_perf['Portefeuille'].isin(['Compte-Courant','Wallet']))
             ]['Performence'].max() * 1.2
+    
     min_perf = df_perf[
             (~df_perf['Portefeuille'].isin(['Compte-Courant','Wallet']))
             ]['Performence'].min() * 1,2
-    tick_positions = np.linspace(min_perf, max_perf, 5)
+    
+    tick_positions = [max_perf * i/4 for i in range(5)] # np.linspace(min_perf, max_perf, 5)
+    
     if mode_discret:
         y_axis_config2 = dict(
             range=[min_perf, max_perf],
@@ -1214,9 +1218,6 @@ with col6:
 #st.dataframe(df_p, use_container_width=True)
 
 
-# MODE DISCRET
-# le hover
-
 ##### 8. Synthese 7 - Performance moyenne et projection
 
 # 0. Initialisation des outils et filtres
@@ -1270,7 +1271,8 @@ with col_p:
         },
         hide_index=True,
         key="params_proj",
-        use_container_width=True  # S'adapte à la colonne
+        use_container_width=True,  # S'adapte à la colonne
+        height= height+70 # on tente d'ajuster la hauteur à celle du graphique
     )
 
 # 3. Moteur de projection (Calcul mois par mois)
@@ -1345,31 +1347,83 @@ synthese_7.add_trace(go.Scatter(
 # Projection
 synthese_7.add_trace(go.Scatter(
     x=df_proj_total['Date'], y=df_proj_total['Valeur'],
-    mode='lines', name=f'Projection à {taux_implicite:.1%}/an',
+    mode='lines', name=f'Projection', # à {taux_implicite:.1%}/an
     line=dict(color='#636EFA', width=3, dash='dash'),
     fill='tozeroy', fillcolor='rgba(99, 110, 250, 0.1)'
 ))
 
+# Si mode discret on : on n'affiche rien (on vide les labels)
+if mode_discret:
+    # On définit 5 graduations réparties sur l'échelle max
+    max_val = cap_final * 1000 * 1.1
+    vals = [max_val * i/4 for i in range(5)] # [0, 25%, 50%, 75%, 100%]
+    
+    y_axis_config = dict(
+        range=[0, max_val],
+        tickvals=vals,
+        ticktext=["•••• €"] * 5, # Remplace chaque chiffre par les points
+        title="",
+        showgrid=False,
+        side="left", 
+        gridcolor='rgba(255,255,255,0.1)'
+    )
+else:
+    y_axis_config = dict(
+        range=[0, cap_final * 1000 * 1.1],
+        title="",
+        showgrid=True,
+        side="left",
+        tickformat=",",
+        ticksuffix=" €", 
+        gridcolor='rgba(255,255,255,0.1)'
+    )
+
+if mode_discret:
+    title_s7 = (
+        f"<b>Trajectoire sur 30 ans</b><br>"
+        f"<span style='font-size:12px; color:#A9A9A9;'>"
+        f"Rendements : •••• %/an | Patrimoine futur : •••• €<br>"
+        f"Dont plus-values : •••• € | Dont contribution : •••• € (•••• %)"
+        f"</span>"
+    )
+else:
+    # On pré-calcule pour éviter les erreurs dans le f-string
+    patrimoine_k = round(cap_final, -1)
+    plus_values_k = round(gain_interets, -1)
+    contribution_k = round(total_investi, -1)
+    part_contrib = (total_investi / cap_final * 100) if cap_final > 0 else 0
+    
+    title_s7 = (
+        f"<b>Trajectoire sur 30 ans</b><br>"
+        f"<span style='font-size:12px; color:#A9A9A9;'>"
+        f"Rendements : {TRI_annuel:.1%}/an | Patrimoine futur : {patrimoine_k:,.0f} k€<br>"
+        f"Dont plus-values : {plus_values_k:,.0f} k€ | "
+        f"Dont contribution : {contribution_k:,.0f} k€ ({part_contrib:.0f}%)"
+        f"</span>"
+    ).replace(",", " ") # Remplace les virgules par des espaces pour le format français
+
 synthese_7.update_layout(
-    title=f"<b>Trajectoire sur 30 ans</b><br>"
-      f"<span style='font-size:12px; color:#A9A9A9;'>"
-      f"Rendements : {TRI_annuel:.1%}/an | Patrimoine futur : {round(cap_final,-1):,.0f} k€<br>" # ou taux_implicite ?
-      f"Dont plus-values : {round(gain_interets,-1):,.0f} k€ | "
-      f"Dont contribution : {round(total_investi,-1):,.0f} k€ ({total_investi/cap_final*100:.0f}%)"
-      f"</span>".replace(",", " "),
+    title=title_s7,
     title_x= 0,
     title_y= 0.96,
     paper_bgcolor='rgba(0,0,0,0)',
     plot_bgcolor='rgba(0,0,0,0)',
     font_color="white",
-    margin=dict(t=60,b=10),
+    margin=dict(t=80,b=10),
     height= height+120,
     #width = width_col1,
-    xaxis=dict(showgrid=False),
-    yaxis=dict(title="", gridcolor='rgba(255,255,255,0.1)'),
+    xaxis=dict(showgrid=False,hoverformat="%b %Y"),
+    yaxis=y_axis_config,
+    separators=", ", # Définit l'espace comme séparateur de milliers
     legend=dict(orientation="h", y=1.1, x=0.5, xanchor="center"),
     showlegend=False
 )
+
+synthese_7.update_traces(
+        hovertemplate="<b>%{fullData.name} à %{x}</b> : <br>•••• €<extra></extra>" if mode_discret 
+        else "<b>%{fullData.name} à %{x}</b> : <br>%{y:,.4r} €<extra></extra>"
+    )
+
 
 with col_g:
     st.plotly_chart(synthese_7, use_container_width=True)
