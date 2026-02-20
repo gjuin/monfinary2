@@ -297,6 +297,10 @@ def show_help_quadrants():
     \n \n
     """)
 
+    st.info("💡 **Conseil :** Si votre radar est équilibré sur les 4 quadrants, vous n'avez pas besoin de prédire la prochaine transition, votre patrimoine est prêt à l'absorber.")
+    
+    st.markdown("<hr style='margin: 0rem 0rem 0.938rem 0rem; border: 0.063rem solid #f0f2f6;'>", unsafe_allow_html=True)
+
     st.markdown("""
     \n
     ### 📊 Les différents styles d'actions
@@ -313,9 +317,23 @@ def show_help_quadrants():
     | **Défensives** | Besoins primaires. La demande reste stable même si l'économie s'effondre. | Infra, Santé, Conso de base, Utilities | Protègent le capital en **Ralentissement** et **Récession**. |
 
     \n
-""")
+    """)
 
-    st.info("💡 **Conseil :** Si votre radar est équilibré sur les 4 quadrants, vous n'avez pas besoin de prédire la prochaine transition, votre patrimoine est prêt à l'absorber.")
+    st.markdown("<hr style='margin: 0rem 0rem 0.938rem 0rem; border: 0.063rem solid #f0f2f6;'>", unsafe_allow_html=True)
+
+    st.markdown("""\n
+    ### 💡 Comment lire les graphiques ?
+    Les graphique de l'onglet de synthèse ont pour but de répondre aux questions suivantes : \n
+    * Quel est la valeur de mon patrimoine total ? Combien de plus-value ai-je généré ?
+    * Où se situe mon épargne ? Comment cela évolue dans le temps ?
+    * Qu'est ce qui explique les variations de mon épargne par rapport à la période précédente ?
+    * A quels scénarios suis-je le mieux robuste ? Comment mon épargne va-t-elle absorber les prochains chocs possibles ?
+    * A quoi suis-je exposé en terme de classe d'actif, à quelle région du monde ? Quels sont les produits que j'ai souscrit ? Qu'est-ce qui explique que tel portefeuille soit plus robuste sur tel scénario ?
+    * Quelles sont les performences de mes différentes enveloppes ?
+    * Suis-je assez bien diversifié entre mes différents supports ?
+    * Si la tendence observée ces derniers mois se poursuit, quelle devrait être la valeur de mon patrimoine d'ici à mes 60 ans ?
+    """)
+
 
 
 
@@ -567,6 +585,7 @@ height = 325
 
 
 #### Synthese 1 - histo empilé par portefeuille ###
+# Q : Où se situe mon épargne ? Comment cela évolue dans le temps ?
 df_plot = df_valo[
     (df_valo['Date'] <= date_cible) &                           # filtrage dynamique sur la date
     (df_valo['Portefeuille'].isin(portefeuilles_selectionnes))  # filtrage dynamique sur les portefeuilles
@@ -581,7 +600,7 @@ synthese_1 = px.bar(
     x="Date_Labels", 
     y="Valeur", 
     color="Portefeuille",
-    title="<b>Mon épargne</b>",
+    title="<b>Mon épargne par portefeuille</b>",
     category_orders={"Portefeuille": ordre_portefeuille}, 
     color_discrete_map = couleurs_portefeuille,
     template="plotly_white"
@@ -625,7 +644,7 @@ synthese_1.update_layout(
         xanchor="right", x=-0.05,
         traceorder ="reversed", #normal
         title=""),
-    margin=dict(l=20, r=20, t=50, b=50),
+    margin=dict(l=20, r=20, t=50, b=20),
     height= height,
     width = width_col1,
     hovermode="closest", # uniquement où je pointe
@@ -636,7 +655,8 @@ synthese_1.update_traces(
     hovertemplate="<b>%{fullData.name}</b> : •••• €<extra></extra>" if mode_discret else "<b>%{fullData.name}</b> : %{y:,.0f} €<extra></extra>"
 )
 
-### Synthese 2 - anneau circulaire dynamique ### 
+### Synthese 2 - Allocation - anneau circulaire dynamique ### 
+# Q : A quoi suis-je exposé en terme de classe d'actif, à quelle région du monde ? Quels sont les produits que j'ai souscrit ?
 # data_valo filtrée uniquement sur date_cible
 df_now = df_valo[
     (df_valo['Date'] == date_cible) &
@@ -668,7 +688,7 @@ synthese_2 = px.pie(
     color='Sous-Catégorie',
     color_discrete_map=couleurs_map, 
     category_orders={"Sous-Catégorie": ordre_cat} if ordre_cat else None, 
-    title=f"<b>Répartition par {dimension_choisie}</b>",
+    title=f"<b>Allocation par {dimension_choisie}</b>",
     template="plotly_white"
 )
 
@@ -695,6 +715,8 @@ synthese_2.update_layout(
 )
 
 ### Synthese 3 - les mouvements du patrimoine T - T-1 ### 
+# Q : Qu'est ce qui explique les variation de mon épargne par rapport à la période précédente ?
+
 # (avec ou hors versement en option ?)
 idx_actuel = liste_dates_obj.index(date_cible)
 
@@ -740,9 +762,9 @@ if idx_actuel > 0:
     txt_total_var = f"<span style='color:{color_var};'>{val_affichage}</span>"
 
     if exclure_versements:
-        titre_graph = f"<b>Performance nette : {txt_total_var}</b> <br><span style='font-size:0.8em; color:gray;'>(hors versements au {date_cible.strftime('%d/%m/%Y')} vs {date_precedente.strftime('%d/%m/%Y')})</span>"
+        titre_graph = f"<b>Performance nette de versement : {txt_total_var}</b> <br><span style='font-size:0.8em; color:gray;'>(hors versements entre le {date_precedente.strftime('%d/%m/%Y')} et le {date_cible.strftime('%d/%m/%Y')})</span>"
     else:
-        titre_graph = f"<b>Variation totale : {txt_total_var}</b> <br><span style='font-size:0.8em; color:gray;'>(avec versements au {date_cible.strftime('%d/%m/%Y')} vs {date_precedente.strftime('%d/%m/%Y')})</span>"
+        titre_graph = f"<b>Variation totale sur le mois : {txt_total_var}</b> <br><span style='font-size:0.8em; color:gray;'>(avec versements entre le {date_precedente.strftime('%d/%m/%Y')} et le {date_cible.strftime('%d/%m/%Y')})</span>"
 
     # --- Bornes fixes de l'axe X ---
     df_histo_delta = df_valo.groupby(['Date', 'Portefeuille'])['Valeur'].sum().reset_index()
@@ -794,7 +816,9 @@ else:
     df_delta = pd.DataFrame()
     synthese_3 = None
 
-### Synthese 4 - l'antifragilité  ### 
+### Synthese 4 - l'antifragilité  ###
+# Q : A quels scénarios suis-je le mieux robuste ? Comment mon épargne va-t-elle absorber les prochains chocs possibles ?
+ 
 df_map_filtree = df_map[df_map['Dimension'].isin(['Géo','Secteur',"Classe d'actif"])] # on ne garde que ces 3 dimensions
 df_radar = pd.merge(df_map_filtree, df_now, on='Produit') # merge avec la valo à la date voulue et aux portefeuilles choisis
 df_radar = pd.merge(df_radar, df_scenar, on=['Dimension', 'Sous-Catégorie']) # on enrichit avec les scores des dimensions par scénario
@@ -945,6 +969,8 @@ synthese_4.update_layout(
 
 
 ### Synthese 5 - Performence par portefeuille  ### 
+# Q : Quels sont les performences de mes différentes enveloppes ?
+
 if idx_actuel > 0:
     # sommer les versements jusqu'à la date choisie et les dates précédentes
     df_vers_select = df_vers[
@@ -1047,6 +1073,8 @@ else:
 
 
 ### Synthese 6 - Matrice de corrélation  ### 
+# Q : Suis-je assez bien diversifié entre mes différentes enveloppes ?
+
 # sommer les versements jusqu'à la date choisie et les dates précédentes
 df_vers_correl = df_vers[
     (df_vers['Date'] <= date_cible) &                           # filtrage dynamique sur la date
@@ -1127,6 +1155,8 @@ synthese_6.update_traces(hoverinfo="z", selector=dict(type='heatmap'))
 
 
 ### KPIs en haut ###
+# Q : Quel est la valeur de mon patrimoine total ? Combien de plus-value ai-je généré ? 
+
 total_patrimoine = df_now['Valeur'].sum() # kpi total patrimoine
 total_investi = df_vers[
     (df_vers['Date'] <= date_cible) & 
@@ -1180,7 +1210,7 @@ with col2:
         # Si c'est vide (première date), on affiche un petit message discret
         st.info("Sélectionnez une date ultérieure pour voir les mouvements par rapport au mois précédent.")
 
-st.markdown("<hr style='margin: 0rem 0rem 0.938rem 0rem; border: 0.063rem solid #f0f2f6;'>", unsafe_allow_html=True)
+#st.markdown("<hr style='margin: 0rem 0rem 0.938rem 0rem; border: 0.063rem solid #f0f2f6;'>", unsafe_allow_html=True)
 col3, col4 = st.columns([1.4, 1.1])
 
 with col3:
@@ -1189,7 +1219,7 @@ with col3:
 with col4:
     st.plotly_chart(synthese_2, use_container_width=True)
 
-st.markdown("<hr style='margin: 0rem 0rem 0.938rem 0rem; border: 0.063rem solid #f0f2f6;'>", unsafe_allow_html=True)
+#st.markdown("<hr style='margin: 0rem 0rem 0.938rem 0rem; border: 0.063rem solid #f0f2f6;'>", unsafe_allow_html=True)
 col5, col6 = st.columns([1.4, 1.1])
 
 with col5:
@@ -1219,6 +1249,7 @@ with col6:
 
 
 ##### 8. Synthese 7 - Performance moyenne et projection
+# Q : Si la tendence observée ces derniers mois se poursuit, quelle devrait être la valeur de mon patrimoine d'ici à mes 60 ans ?
 
 # 0. Initialisation des outils et filtres
 dict_dates = pd.Series(df_date_creation.Date_Creation.values, index=df_date_creation.Portefeuille).to_dict()
