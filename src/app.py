@@ -1178,25 +1178,62 @@ else:
     txt_pv = f"{plus_value_globale:+,.0f} € ({perf_globale:+.1f}%)".replace(",", " ")
 
 # Affichage des KPIs en ligne
-st.markdown(
-    f"""
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.625rem; border-bottom: 0.125rem solid #f0f2f6; margin-bottom: 1.25rem;">
-        <div>
-            <span style="color: gray; font-size: 0.8em; text-transform: uppercase;">Patrimoine Total</span><br>
-            <span style="font-size: 1.5em; font-weight: 700; color: #1f77b4;">{txt_patrimoine}</span>
-        </div>
-        <div style="text-align: center;">
-            <span style="color: gray; font-size: 0.8em; text-transform: uppercase;">Total Investi</span><br>
-            <span style="font-size: 1.2em; font-weight: 600; color: #666666;">{txt_investi}</span>
-        </div>
-        <div style="text-align: right;">
-            <span style="color: gray; font-size: 0.8em; text-transform: uppercase;">Plus-value Latente</span><br>
-            <span style="font-size: 1.2em; font-weight: 600; color: {'#34a853' if plus_value_globale >= 0 else '#ea4335'};">{txt_pv}</span>
-        </div>
+# Préparation des variables en amont pour un HTML propre
+color_pv = '#34a853' if plus_value_globale >= 0 else '#ea4335'
+icon_pv = "▲" if plus_value_globale >= 0 else "▼"
+pct_pv = (plus_value_globale/total_investi*100 if total_investi > 0 else 0)
+
+# 1. Le CSS (à mettre une seule fois)
+st.markdown("""
+<style>
+    .main-kpi-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        padding: 10px;
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-left: 5px solid #636EFA;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        margin-bottom: 25px;
+        transition: all 0.3s ease-in-out;
+    }
+    .main-kpi-card:hover {
+        transform: translateY(-5px);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: 0px 10px 20px rgba(0,0,0,0.2);
+    }
+    .kpi-section { text-align: center; flex: 1; }
+    .kpi-divider { width: 1px; height: 40px; background: rgba(255, 255, 255, 0.1); }
+    .kpi-label-single { color: #A9A9A9; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 5px; }
+    .kpi-value-single { color: white; font-size: 1.4rem; font-weight: 500; color: #d1d1d1 ; display: block; }
+</style>
+""", unsafe_allow_html=True)
+
+# 2. Le contenu HTML (sur une seule ligne f-string pour éviter le bug de rendu)
+html_content = f"""
+<div class="main-kpi-card">
+    <div class="kpi-section">
+        <span class="kpi-label-single">🏦 Patrimoine Total</span>
+        <span class="kpi-value-single">{txt_patrimoine}</span>
     </div>
-    """, 
-    unsafe_allow_html=True
-)
+    <div class="kpi-divider"></div>
+    <div class="kpi-section">
+        <span class="kpi-label-single">💰 Total Investi</span>
+        <span class="kpi-value-single" ; ">{txt_investi}</span>
+    </div>
+    <div class="kpi-divider"></div>
+    <div class="kpi-section">
+        <span class="kpi-label-single">📈 Plus-value</span>
+        <span class="kpi-value-single" style="color: {color_pv};">{icon_pv} {txt_pv}</span>
+    </div>
+</div>
+"""
+
+st.markdown(html_content, unsafe_allow_html=True)
 
 # Layout des graphiques
 col1, col2 = st.columns([1.4, 1.1]) 
@@ -1296,9 +1333,9 @@ with col_p:
     edited_df = st.data_editor(
         df_init[["Portefeuille", "Taux", "Mensualité"]],
         column_config={
-            "Portefeuille": st.column_config.Column(disabled=True,width=30),
-            "Taux": st.column_config.NumberColumn(format="%.1f%%",width=11),
-            "Mensualité": st.column_config.NumberColumn(format="%d €",width=16)
+            "Portefeuille": st.column_config.Column("📍 Support",disabled=True,width=30),
+            "Taux": st.column_config.NumberColumn(format="%.1f%%",width=11, help="Objectif de performance annuelle"), #NumberColumn(format="%.1f%%",width=11),
+            "Mensualité": st.column_config.NumberColumn(format="%d €",width=16, help="Effort d'épargne mensuel")
         },
         hide_index=True,
         key="params_proj",
@@ -1458,3 +1495,17 @@ synthese_7.update_traces(
 
 with col_g:
     st.plotly_chart(synthese_7, use_container_width=True)
+
+
+
+st.markdown(f"""
+    <div style="
+        background: rgba(255, 255, 255, 0.05);
+        padding: 20px;
+        border-radius: 10px;
+        border-left: 5px solid #636EFA;
+        margin-bottom: 10px;">
+        <p style="margin:0; font-size: 1.3em; color: #A9A9A9;">Revenu mensuel cible (4%)</p>
+        <h2 style="margin:0; font-size: 0.9em; color: white;">{round(cap_final*0.04/12*1000, 0)} € / mois</h2>
+    </div>
+""", unsafe_allow_html=True)
