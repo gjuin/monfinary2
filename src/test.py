@@ -570,7 +570,7 @@ exclure_versements = st.sidebar.toggle("Exclure les versements 💸", value=Fals
 
 #  Item 6 - ajout d'un mode discret 🔒
 # (pas de divider ici, on reste dans la section OPTIONS)
-mode_discret = st.sidebar.checkbox("Mode discret 🔒", value=True) # on le met par défaut à discret
+mode_discret = st.sidebar.checkbox("Mode discret 🔒", value=False)
 
 
 ##### 6. Interface et Graphique
@@ -1016,11 +1016,11 @@ if idx_actuel > 0:
     synthese_5.update_xaxes(type='category', title="", showgrid=False, tickangle=-40) # Rend les distances égales entre barres
     
     max_perf = df_perf[
-            (~df_perf['Portefeuille'].isin(['Compte-Courant']))
+            (~df_perf['Portefeuille'].isin(['Compte-Courant','Wallet']))
             ]['Performence'].max() * 1.2
     
     min_perf = df_perf[
-            (~df_perf['Portefeuille'].isin(['Compte-Courant']))
+            (~df_perf['Portefeuille'].isin(['Compte-Courant','Wallet']))
             ]['Performence'].min() * 1,2
     
     tick_positions = [max_perf * i/4 for i in range(5)] # np.linspace(min_perf, max_perf, 5)
@@ -1177,11 +1177,93 @@ else:
     txt_investi = f"{total_investi:,.0f} €".replace(",", " ")
     txt_pv = f"{plus_value_globale:+,.0f} € ({perf_globale:+.1f}%)".replace(",", " ")
 
-# Affichage des KPIs en ligne
+
+##### 8. Synthese 7 - Performance moyenne et projection
+# Q : Si la tendence observée ces derniers mois se poursuit, quelle devrait être la valeur de mon patrimoine d'ici à mes 60 ans ?
+
+# 0. Initialisation des outils et filtres
+dict_dates = pd.Series(df_date_creation.Date_Creation.values, index=df_date_creation.Portefeuille).to_dict()
+date_lancement_app = pd.to_datetime(df_valo['Date'].min())
+ts_cible = pd.to_datetime(date_cible)
+exclure_supports = ["Compte-Courant"] # Liste d'exclusion pour le tableau
+
+# 1. Calcul des CAGR historiques pour initialiser le tableau
+calculs_p = []
+for p in portefeuilles_selectionnes:
+    df_p_v = df_valo[(df_valo['Portefeuille'] == p) & (pd.to_datetime(df_valo['Date']) <= ts_cible)].groupby('Date')['Valeur'].sum().reset_index()
+    df_p_vers = df_vers[(df_vers['Portefeuille'] == p) & (pd.to_datetime(df_vers['Date']) <= ts_cible)].groupby('Date')['Versement'].sum().reset_index()
+    
+    if not df_p_v.empty:
+        df_merged = pd.merge(df_p_v, df_p_vers, on='Date', how='left').fillna(0)
+        df_merged['Date'] = pd.to_datetime(df_merged['Date'])
+        df_merged['Cumul_Investi'] = df_merged['Versement'].cumsum()
+        date_ouvert = pd.to_datetime(dict_dates.get(p, date_lancement_app))
+        df_merged['Annees'] = (df_merged['Date'] - date_ouvert).dt.days / 365.25
+        df_merged['Perf'] = df_merged['Valeur'] / df_merged['Cumul_Investi'].clip(lower=1)
+        df_merged['CAGR'] = (df_merged['Perf'] ** (1 / df_merged['Annees'].clip(lower=0.1))) - 1
+        
+        cagr_hist = (df_merged['CAGR'] * df_merged['Valeur']).sum() / df_merged['Valeur'].sum()
+        val_actuelle = df_merged['Valeur'].iloc[-1]
+        
+        calculs_p.append({
+            "Portefeuille": p,
+            "Valeur Actuelle": val_actuelle,
+            "Taux": round(cagr_hist * 100, 2),
+            "Mensualité": 0.0
+        })
+
+df_init = pd.DataFrame(calculs_p)
+df_init = df_init[~df_init['Portefeuille'].isin(exclure_supports)] # On filtre les supports exclus du tableau de paramétrage
+
+# df_hist
+#df_hist_total = pd.DataFrame({'Date': df_merged['Date'], 'Valeur': valeurs_proj})
+df_hist_total = df_plot.groupby('Date')['Valeur'].sum().reset_index()
+
+# récupération des modifications issues du tableau de contrôle
+if 'params_proj' in st.session_state and st.session_state.params_proj['edited_rows']:
+    for row_idx, changes in st.session_state.params_proj['edited_rows'].items():
+        for key, val in changes.items():
+            df_init.iloc[row_idx, df_init.columns.get_loc(key)] = val
+
+# 3. CALCULS DE LA PROJECTION (Basés sur df_init_proj mis à jour)
+df_proj_total = pd.DataFrame()
+# Simulation simplifiée sur 30 ans (360 mois)
+cap_init = df_init['Valeur Actuelle'].sum()
+total_investi = cap_init
+mensualite_globale = df_init['Mensualité'].sum()
+
+# Calcul du taux moyen pondéré pour la projection
+total_val = df_init['Valeur Actuelle'].sum()
+rendement_moyen = sum(
+    (row['Taux'] / 100) * (row['Valeur Actuelle'] / total_val)
+    for _, row in df_init.iterrows()
+) if total_val > 0 else 0
+
+# Génération des points de projection
+dates_proj = pd.date_range(start=df_merged['Date'].max(), periods=360, freq='M')
+valeurs_proj = []
+current_cap = cap_init
+
+for i in range(360):
+    # Intérêts composés mensuels + Versement
+    current_cap = current_cap * (1 + rendement_moyen/12) + mensualite_globale
+    valeurs_proj.append(current_cap)
+    total_investi += mensualite_globale
+
+df_proj_total = pd.DataFrame({'Date': dates_proj, 'Valeur': valeurs_proj})
+cap_final = valeurs_proj[-1]
+gain_interets = cap_final - total_investi
+revenu_mensuel_cible = (cap_final * 0.04) / 12 # Règle des 4%
+
+
+##### Affichage des KPIs en ligne
 # Préparation des variables en amont pour un HTML propre
 color_pv = '#34a853' if plus_value_globale >= 0 else '#ea4335'
 icon_pv = "▲" if plus_value_globale >= 0 else "▼"
 pct_pv = (plus_value_globale/total_investi*100 if total_investi > 0 else 0)
+txt_revenu_F = f"{revenu_mensuel_cible:,.0f} €/mois".replace(",", " ")
+
+
 
 # 1. Le CSS (à mettre une seule fois)
 st.markdown("""
@@ -1229,6 +1311,11 @@ html_content = f"""
     <div class="kpi-section">
         <span class="kpi-label-single">📈 Plus-value</span>
         <span class="kpi-value-single" style="color: {color_pv};">{icon_pv} {txt_pv}</span>
+    </div>
+    <div class="kpi-divider"></div>
+    <div class="kpi-section">
+        <span class="kpi-label-single">💰 Revenu Cible</span>
+        <span class="kpi-value-single" ; ">{txt_revenu_F}</span>
     </div>
 </div>
 """
@@ -1285,218 +1372,123 @@ with col6:
 #st.dataframe(df_p, use_container_width=True)
 
 
-##### 8. Synthese 7 - Performance moyenne et projection
-# Q : Si la tendence observée ces derniers mois se poursuit, quelle devrait être la valeur de mon patrimoine d'ici à mes 60 ans ?
 
-# 0. Initialisation des outils et filtres
-dict_dates = pd.Series(df_date_creation.Date_Creation.values, index=df_date_creation.Portefeuille).to_dict()
-date_lancement_app = pd.to_datetime(df_valo['Date'].min())
-ts_cible = pd.to_datetime(date_cible)
-exclure_supports = ["Compte-Courant"] # Liste d'exclusion pour le tableau
-
-# 1. Calcul des CAGR historiques pour initialiser le tableau
-calculs_p = []
-for p in portefeuilles_selectionnes:
-    df_p_v = df_valo[(df_valo['Portefeuille'] == p) & (pd.to_datetime(df_valo['Date']) <= ts_cible)].groupby('Date')['Valeur'].sum().reset_index()
-    df_p_vers = df_vers[(df_vers['Portefeuille'] == p) & (pd.to_datetime(df_vers['Date']) <= ts_cible)].groupby('Date')['Versement'].sum().reset_index()
-    
-    if not df_p_v.empty:
-        df_merged = pd.merge(df_p_v, df_p_vers, on='Date', how='left').fillna(0)
-        df_merged['Date'] = pd.to_datetime(df_merged['Date'])
-        df_merged['Cumul_Investi'] = df_merged['Versement'].cumsum()
-        date_ouvert = pd.to_datetime(dict_dates.get(p, date_lancement_app))
-        df_merged['Annees'] = (df_merged['Date'] - date_ouvert).dt.days / 365.25
-        df_merged['Perf'] = df_merged['Valeur'] / df_merged['Cumul_Investi'].clip(lower=1)
-        df_merged['CAGR'] = (df_merged['Perf'] ** (1 / df_merged['Annees'].clip(lower=0.1))) - 1
-        
-        cagr_hist = (df_merged['CAGR'] * df_merged['Valeur']).sum() / df_merged['Valeur'].sum()
-        val_actuelle = df_merged['Valeur'].iloc[-1]
-        
-        calculs_p.append({
-            "Portefeuille": p,
-            "Valeur Actuelle": val_actuelle,
-            "Taux": round(cagr_hist * 100, 2),
-            "Mensualité": 0.0
-        })
 
 # 2. Interface : Colonne Graphe (3) et Colonne Paramètres (1)
 col_g, col_p = st.columns([2.5, 1])
 
 with col_p:
-    st.markdown("<span style='font-size:16px;'><b>⚙️ Ajustez vos paramètres</b></span>", unsafe_allow_html=True)
-
-    df_init = pd.DataFrame(calculs_p)
-    # On filtre les supports exclus du tableau de paramétrage
-    df_init = df_init[~df_init['Portefeuille'].isin(exclure_supports)]
+    st.markdown(f"<span style='font-size:0.85em; color:#A9A9A9;'><b>⚙️ AJUSTEZ VOS PARAMÈTRES</b></span>", unsafe_allow_html=True)
     
-    # Éditeur de données interactif
+    # Le data_editor avec la 'key' qui permet le lien avec le haut
     edited_df = st.data_editor(
-        df_init[["Portefeuille", "Taux", "Mensualité"]],
-        column_config={
-            "Portefeuille": st.column_config.Column("📍 Support",disabled=True,width=30),
-            "Taux": st.column_config.NumberColumn(format="%.1f%%",width=11, help="Objectif de performance annuelle"), #NumberColumn(format="%.1f%%",width=11),
-            "Mensualité": st.column_config.NumberColumn(format="%d €",width=16, help="Effort d'épargne mensuel")
-        },
-        hide_index=True,
+        df_init,
         key="params_proj",
-        use_container_width=True,  # S'adapte à la colonne
-        height= height+70 # on tente d'ajuster la hauteur à celle du graphique
+        use_container_width=True,
+        height=height+20,
+        column_config={
+            "Portefeuille": st.column_config.Column(disabled=True),
+            "Taux": st.column_config.NumberColumn(format="%.1f%%"),
+            "Mensualité": st.column_config.NumberColumn(format="%d €")
+        },
+        hide_index=True
     )
-
-# 3. Moteur de projection (Calcul mois par mois)
-all_projections = []
-all_hist = []
-
-# Dictionnaire des réglages modifiés
-settings = edited_df.set_index('Portefeuille').to_dict('index')
-
-for p in portefeuilles_selectionnes:
-    # Récupération historique
-    df_h = df_valo[(df_valo['Portefeuille'] == p) & (pd.to_datetime(df_valo['Date']) <= ts_cible)].groupby('Date')['Valeur'].sum().reset_index()
-    if df_h.empty: continue
-    all_hist.append(df_h)
-    
-    # Paramètres de projection
-    # Si le portefeuille est exclu du tableau, on prend CAGR=0 et Mensu=0
-    p_settings = settings.get(p, {"Taux": 0.0, "Mensualité": 0.0})
-    taux_annuel = p_settings["Taux"] / 100
-    mensu = p_settings["Mensualité"]
-    
-    # Simulation sur 360 mois (30 ans)
-    cap = df_h['Valeur'].iloc[-1]
-    dates_f = [ts_cible + pd.DateOffset(months=m) for m in range(0, 361)]
-    valeurs_f = []
-    
-    # Taux mensuel équivalent
-    r_mensuel = (1 + taux_annuel)**(1/12) - 1
-    
-    current_val = cap
-    for m in range(361):
-        valeurs_f.append(current_val)
-        # Croissance du capital + versement en fin de mois
-        current_val = current_val * (1 + r_mensuel) + mensu
-        
-    all_projections.append(pd.DataFrame({'Date': dates_f, 'Valeur': valeurs_f}))
-
-# 4. Aggreger et Afficher
-df_hist_total = pd.concat(all_hist).groupby('Date')['Valeur'].sum().reset_index()
-df_proj_total = pd.concat(all_projections).groupby('Date')['Valeur'].sum().reset_index()
-
-# Calcul indicateurs pour le titre
-cap_final = df_proj_total['Valeur'].iloc[-1]/1000
-total_investi = (df_hist_total['Valeur'].iloc[-1] + (edited_df["Mensualité"].sum() * 360))/1000
-gain_interets = cap_final - total_investi
-cap_init = df_proj_total['Valeur'].iloc[0]/1000
-
-# On calcule le taux implicite global (CAGR moyen de la projection) - inclut les versements !
-taux_implicite = (cap_final / cap_init)**(1/30) - 1 if cap_init > 0 else 0
-
-# Calcul du TRI : Taux de Rendement Interne - exclut les versements 
-# On prépare la liste des flux (cash flows)
-flux = [-cap_init*1000] # On part du capital initial comme un investissement (négatif)
-mensu_totale = edited_df["Mensualité"].sum() # On ajoute chaque mensualité totale pendant 360 mois (négatif)
-flux.extend([-mensu_totale] * 360)
-
-flux[-1] += cap_final*1000 # Le dernier mois, on ajoute la valeur finale du patrimoine (positif)
-TRI_mensuel = npf.irr(flux) # Calcul du TRI mensuel
-TRI_annuel = (1 + TRI_mensuel)**12 - 1 # Annualisation du TRI
-
-# Le graphique
-synthese_7 = go.Figure()
-
-# Historique
-synthese_7.add_trace(go.Scatter(
-    x=df_hist_total['Date'], y=df_hist_total['Valeur'],
-    mode='lines', name='Historique',
-    line=dict(color='#00CC96', width=3),
-    fill='tozeroy', fillcolor='rgba(0, 204, 150, 0.1)'
-))
-
-# Projection
-synthese_7.add_trace(go.Scatter(
-    x=df_proj_total['Date'], y=df_proj_total['Valeur'],
-    mode='lines', name=f'Projection', # à {taux_implicite:.1%}/an
-    line=dict(color='#636EFA', width=3, dash='dash'),
-    fill='tozeroy', fillcolor='rgba(99, 110, 250, 0.1)'
-))
-
-# Si mode discret on : on n'affiche rien (on vide les labels)
-if mode_discret:
-    # On définit 5 graduations réparties sur l'échelle max
-    max_val = cap_final * 1000 * 1.1
-    vals = [max_val * i/7 for i in range(1,7)] # [0, 25%, 50%, 75%, 100%]
-    
-    y_axis_config = dict(
-        range=[0, max_val],
-        tickvals=vals,
-        ticktext=["•••• €"] * 7, # Remplace chaque chiffre par les points
-        title="",
-        showgrid=False,
-        side="left", 
-        gridcolor='rgba(255,255,255,0.1)'
-    )
-else:
-    y_axis_config = dict(
-        range=[0, cap_final * 1000 * 1.1],
-        title="",
-        showgrid=True,
-        side="left",
-        tickformat=",",
-        ticksuffix=" €", 
-        gridcolor='rgba(255,255,255,0.1)'
-    )
-
-if mode_discret:
-    title_s7 = (
-        f"<b>Trajectoire sur 30 ans</b><br>"
-        f"<span style='font-size:12px; color:#A9A9A9;'>"
-        f"Rendements : •••• %/an | Patrimoine futur : •••• €<br>"
-        f"Dont plus-values : •••• € | Dont contribution : •••• € (•••• %)<br>"
-        f"Revenu mensuel net potentiellement atteint : •••• € / mois"
-        f"</span>"
-    )
-else:
-    # On pré-calcule pour éviter les erreurs dans le f-string
-    patrimoine_k = round(cap_final, -1)
-    plus_values_k = round(gain_interets, -1)
-    contribution_k = round(total_investi, -1)
-    part_contrib = (total_investi / cap_final * 100) if cap_final > 0 else 0
-    revenu_mensuel_cible = round(cap_final*0.04/12*1000*0.5, -1) # 4% max pour maintenir une épargne stable, * 1000 pour revenir en millier, flat tax 2060 à 50%
-    
-    title_s7 = (
-        f"<b>Trajectoire sur 30 ans</b><br>"
-        f"<span style='font-size:12px; color:#A9A9A9;'>"
-        f"Rendements : {TRI_annuel:.1%}/an | Patrimoine futur : {patrimoine_k:,.0f} k€<br>"
-        f"Dont plus-values : {plus_values_k:,.0f} k€ | "
-        f"Dont contribution : {contribution_k:,.0f} k€ ({part_contrib:.0f}%)<br>"
-        f"Revenu mensuel net potentiellement atteint : {revenu_mensuel_cible:.0f} € / mois" 
-        f"</span>"
-    ).replace(",", " ") # Remplace les virgules par des espaces pour le format français
-
-synthese_7.update_layout(
-    title=title_s7,
-    title_x= 0,
-    title_y= 0.96,
-    paper_bgcolor='rgba(0,0,0,0)',
-    plot_bgcolor='rgba(0,0,0,0)',
-    font_color="white",
-    margin=dict(t=80,b=10),
-    height= height+120,
-    #width = width_col1,
-    xaxis=dict(showgrid=False,hoverformat="%b %Y"),
-    yaxis=y_axis_config,
-    separators=", ", # Définit l'espace comme séparateur de milliers
-    legend=dict(orientation="h", y=1.1, x=0.5, xanchor="center"),
-    showlegend=False
-)
-
-synthese_7.update_traces(
-        hovertemplate="<b>%{fullData.name} à %{x}</b> : <br>•••• €<extra></extra>" if mode_discret 
-        else "<b>%{fullData.name} à %{x}</b> : <br>%{y:,.4r} €<extra></extra>"
-    )
-
 
 with col_g:
-    st.plotly_chart(synthese_7, use_container_width=True)
+    # Calcul du TRI : Taux de Rendement Interne - exclut les versements 
+    # On prépare la liste des flux (cash flows)
+    flux = [-cap_init*1000] # On part du capital initial comme un investissement (négatif)
+    mensu_totale = edited_df["Mensualité"].sum() # On ajoute chaque mensualité totale pendant 360 mois (négatif)
+    flux.extend([-mensu_totale] * 360)
 
+    flux[-1] += cap_final*1000 # Le dernier mois, on ajoute la valeur finale du patrimoine (positif)
+    TRI_mensuel = npf.irr(flux) # Calcul du TRI mensuel
+    TRI_annuel = (1 + TRI_mensuel)**12 - 1 # Annualisation du TRI
+    
+    synthese_7 = go.Figure()
+    # Historique
+    synthese_7.add_trace(go.Scatter(
+        x=df_hist_total['Date'], y=df_hist_total['Valeur'],
+        mode='lines', name='Historique',
+        line=dict(color='#00CC96', width=3),
+        fill='tozeroy', fillcolor='rgba(0, 204, 150, 0.1)'
+    ))
+    # Projection
+    synthese_7.add_trace(go.Scatter(
+        x=df_proj_total['Date'], y=df_proj_total['Valeur'],
+        mode='lines', name='Projection',
+        line=dict(color='#636EFA', width=3, dash='dash'),
+        fill='tozeroy', fillcolor='rgba(99, 110, 250, 0.1)'
+    ))
+
+    # Si mode discret on : on n'affiche rien (on vide les labels)
+    if mode_discret:
+        # On définit 5 graduations réparties sur l'échelle max
+        max_val = cap_final * 1000 * 1.1
+        vals = [max_val * i/4 for i in range(5)] # [0, 25%, 50%, 75%, 100%]
+
+        y_axis_config = dict(
+            range=[0, max_val],
+            tickvals=vals,
+            ticktext=["•••• €"] * 5, # Remplace chaque chiffre par les points
+            title="",
+            showgrid=False,
+            side="left", 
+            gridcolor='rgba(255,255,255,0.1)'
+        )
+    else:
+        y_axis_config = dict(
+            range=[0, cap_final * 1000 * 1.1],
+            title="",
+            showgrid=True,
+            side="left",
+            tickformat=",",
+            ticksuffix=" €", 
+            gridcolor='rgba(255,255,255,0.1)'
+        )
+
+    if mode_discret:
+        title_s7 = (
+            f"<b>Trajectoire sur 30 ans</b><br>"
+            f"<span style='font-size:12px; color:#A9A9A9;'>"
+            f"Rendements : •••• %/an | Patrimoine futur : •••• €<br>"
+            f"Dont plus-values : •••• € | Dont contribution : •••• € (•••• %)"
+            f"</span>"
+        )
+    else:
+        # On pré-calcule pour éviter les erreurs dans le f-string
+        patrimoine_k = round(cap_final, -1)
+        plus_values_k = round(gain_interets, -1)
+        contribution_k = round(total_investi, -1)
+        part_contrib = (total_investi / cap_final * 100) if cap_final > 0 else 0
+
+        title_s7 = (
+            f"<b>Trajectoire sur 30 ans</b><br>"
+            f"<span style='font-size:12px; color:#A9A9A9;'>"
+            f"Rendements : {TRI_annuel:.1%}/an | Patrimoine futur : {patrimoine_k:,.0f} k€<br>"
+            f"Dont plus-values : {plus_values_k:,.0f} k€ | "
+            f"Dont contribution : {contribution_k:,.0f} k€ ({part_contrib:.0f}%)"
+            f"</span>"
+        ).replace(",", " ") # Remplace les virgules par des espaces pour le format français
+
+    # Formatage axes et hover
+    synthese_7.update_xaxes(hoverformat="%b %Y")
+    synthese_7.update_layout(
+        title=title_s7,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font_color="white",
+        height=height+100,
+        margin=dict(t=50, b=20, l=0, r=0),
+        yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.05)', ticksuffix=" €"),
+        xaxis=dict(showgrid=False),
+        showlegend=False
+    )
+    
+    hover_template = "<b>%{fullData.name} à %{x}</b><br>Valeur : %{y:,.0f} €<extra></extra>"
+    if mode_discret:
+        hover_template = "<b>%{fullData.name} à %{x}</b><br>Valeur : •••• €<extra></extra>"
+    
+    synthese_7.update_traces(hovertemplate=hover_template)
+    st.plotly_chart(synthese_7, use_container_width=True)
 
