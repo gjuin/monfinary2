@@ -570,7 +570,7 @@ exclure_versements = st.sidebar.toggle("Exclure les versements 💸", value=Fals
 
 #  Item 6 - ajout d'un mode discret 🔒
 # (pas de divider ici, on reste dans la section OPTIONS)
-mode_discret = st.sidebar.checkbox("Mode discret 🔒", value=False)
+mode_discret = st.sidebar.checkbox("Mode discret 🔒", value=True) # on le met par défaut à discret
 
 
 ##### 6. Interface et Graphique
@@ -1016,11 +1016,11 @@ if idx_actuel > 0:
     synthese_5.update_xaxes(type='category', title="", showgrid=False, tickangle=-40) # Rend les distances égales entre barres
     
     max_perf = df_perf[
-            (~df_perf['Portefeuille'].isin(['Compte-Courant','Wallet']))
+            (~df_perf['Portefeuille'].isin(['Compte-Courant']))
             ]['Performence'].max() * 1.2
     
     min_perf = df_perf[
-            (~df_perf['Portefeuille'].isin(['Compte-Courant','Wallet']))
+            (~df_perf['Portefeuille'].isin(['Compte-Courant']))
             ]['Performence'].min() * 1,2
     
     tick_positions = [max_perf * i/4 for i in range(5)] # np.linspace(min_perf, max_perf, 5)
@@ -1424,12 +1424,12 @@ synthese_7.add_trace(go.Scatter(
 if mode_discret:
     # On définit 5 graduations réparties sur l'échelle max
     max_val = cap_final * 1000 * 1.1
-    vals = [max_val * i/4 for i in range(5)] # [0, 25%, 50%, 75%, 100%]
+    vals = [max_val * i/7 for i in range(1,7)] # [0, 25%, 50%, 75%, 100%]
     
     y_axis_config = dict(
         range=[0, max_val],
         tickvals=vals,
-        ticktext=["•••• €"] * 5, # Remplace chaque chiffre par les points
+        ticktext=["•••• €"] * 7, # Remplace chaque chiffre par les points
         title="",
         showgrid=False,
         side="left", 
@@ -1451,7 +1451,8 @@ if mode_discret:
         f"<b>Trajectoire sur 30 ans</b><br>"
         f"<span style='font-size:12px; color:#A9A9A9;'>"
         f"Rendements : •••• %/an | Patrimoine futur : •••• €<br>"
-        f"Dont plus-values : •••• € | Dont contribution : •••• € (•••• %)"
+        f"Dont plus-values : •••• € | Dont contribution : •••• € (•••• %)<br>"
+        f"Revenu mensuel net potentiellement atteint : •••• € / mois"
         f"</span>"
     )
 else:
@@ -1460,13 +1461,15 @@ else:
     plus_values_k = round(gain_interets, -1)
     contribution_k = round(total_investi, -1)
     part_contrib = (total_investi / cap_final * 100) if cap_final > 0 else 0
+    revenu_mensuel_cible = round(cap_final*0.04/12*1000*0.5, -1) # 4% max pour maintenir une épargne stable, * 1000 pour revenir en millier, flat tax 2060 à 50%
     
     title_s7 = (
         f"<b>Trajectoire sur 30 ans</b><br>"
         f"<span style='font-size:12px; color:#A9A9A9;'>"
         f"Rendements : {TRI_annuel:.1%}/an | Patrimoine futur : {patrimoine_k:,.0f} k€<br>"
         f"Dont plus-values : {plus_values_k:,.0f} k€ | "
-        f"Dont contribution : {contribution_k:,.0f} k€ ({part_contrib:.0f}%)"
+        f"Dont contribution : {contribution_k:,.0f} k€ ({part_contrib:.0f}%)<br>"
+        f"Revenu mensuel net potentiellement atteint : {revenu_mensuel_cible:.0f} € / mois" 
         f"</span>"
     ).replace(",", " ") # Remplace les virgules par des espaces pour le format français
 
@@ -1497,15 +1500,3 @@ with col_g:
     st.plotly_chart(synthese_7, use_container_width=True)
 
 
-
-st.markdown(f"""
-    <div style="
-        background: rgba(255, 255, 255, 0.05);
-        padding: 20px;
-        border-radius: 10px;
-        border-left: 5px solid #636EFA;
-        margin-bottom: 10px;">
-        <p style="margin:0; font-size: 1.3em; color: #A9A9A9;">Revenu mensuel cible (4%)</p>
-        <h2 style="margin:0; font-size: 0.9em; color: white;">{round(cap_final*0.04/12*1000, 0)} € / mois</h2>
-    </div>
-""", unsafe_allow_html=True)
