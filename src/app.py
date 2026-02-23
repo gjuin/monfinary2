@@ -1346,15 +1346,22 @@ with col_p:
 # 3. Moteur de projection (Calcul mois par mois)
 all_projections = []
 all_hist = []
+all_vers_total_plot = []
 
 # Dictionnaire des réglages modifiés
 settings = edited_df.set_index('Portefeuille').to_dict('index')
 
 for p in portefeuilles_selectionnes:
-    # Récupération historique
+    # Récupération historique valeur
     df_h = df_valo[(df_valo['Portefeuille'] == p) & (pd.to_datetime(df_valo['Date']) <= ts_cible)].groupby('Date')['Valeur'].sum().reset_index()
     if df_h.empty: continue
     all_hist.append(df_h)
+
+    # Récupération historique versements 
+    df_v_hist = df_vers[(df_vers['Portefeuille'] == p) & (pd.to_datetime(df_vers['Date']) <= ts_cible)].copy()
+    df_v_hist['Date'] = pd.to_datetime(df_v_hist['Date'])
+    df_v_hist = df_v_hist.groupby('Date')['Versement'].sum().reset_index()
+    df_v_hist['Cumul'] = df_v_hist['Versement'].cumsum()
     
     # Paramètres de projection
     # Si le portefeuille est exclu du tableau, on prend CAGR=0 et Mensu=0
@@ -1364,23 +1371,39 @@ for p in portefeuilles_selectionnes:
     
     # Simulation sur 360 mois (30 ans)
     cap = df_h['Valeur'].iloc[-1]
+    last_vers_cumul = df_v_hist['Cumul'].iloc[-1] if not df_v_hist.empty else 0
     dates_f = [ts_cible + pd.DateOffset(months=m) for m in range(0, 361)]
     valeurs_f = []
-    
+    vers_f = []
+
     # Taux mensuel équivalent
     r_mensuel = (1 + taux_annuel)**(1/12) - 1
     
     current_val = cap
+    current_vers = last_vers_cumul
+
     for m in range(361):
         valeurs_f.append(current_val)
-        # Croissance du capital + versement en fin de mois
-        current_val = current_val * (1 + r_mensuel) + mensu
+        vers_f.append(current_vers)
         
+        current_val = current_val * (1 + r_mensuel) + mensu # Croissance du capital + versement en fin de mois
+        current_vers = current_vers + mensu # cumul versement + versement
+    
     all_projections.append(pd.DataFrame({'Date': dates_f, 'Valeur': valeurs_f}))
+
+    # Stockage pour le graphique (Passé + Futur)
+    # On crée un DF complet pour les versements de ce portefeuille
+    df_v_complet = pd.concat([
+        df_v_hist[['Date', 'Cumul']].rename(columns={'Cumul': 'Versement'}),
+        pd.DataFrame({'Date': dates_f, 'Versement': vers_f})
+    ]).drop_duplicates('Date')
+    df_v_complet['Date'] = pd.to_datetime(df_v_complet['Date'])
+    all_vers_total_plot.append(df_v_complet)
 
 # 4. Aggreger et Afficher
 df_hist_total = pd.concat(all_hist).groupby('Date')['Valeur'].sum().reset_index()
 df_proj_total = pd.concat(all_projections).groupby('Date')['Valeur'].sum().reset_index()
+df_vers_total = pd.concat(all_vers_total_plot).groupby('Date')['Versement'].sum().reset_index()
 
 # Calcul indicateurs pour le titre
 cap_final = df_proj_total['Valeur'].iloc[-1]/1000
@@ -1404,12 +1427,21 @@ TRI_annuel = (1 + TRI_mensuel)**12 - 1 # Annualisation du TRI
 # Le graphique
 synthese_7 = go.Figure()
 
+# Ligne Versements (ajoutée en premier pour être en arrière-plan)
+synthese_7.add_trace(go.Scatter(
+    x=df_vers_total['Date'], y=df_vers_total['Versement'],
+    mode='lines', name='Cumul versements',
+    line=dict(color='rgba(208, 208, 208, 0.6)', width=1.5, dash='dot'),
+    fill='tozeroy', fillcolor='rgba(208, 208, 208, 0.05)'
+    #hovertemplate="Cumul investi : %{y:,.0f} €<extra></extra>"
+))
+
 # Historique
 synthese_7.add_trace(go.Scatter(
     x=df_hist_total['Date'], y=df_hist_total['Valeur'],
     mode='lines', name='Historique',
     line=dict(color='#00CC96', width=3),
-    fill='tozeroy', fillcolor='rgba(0, 204, 150, 0.1)'
+    fill='tozeroy', fillcolor='rgba(0, 204, 150, 0.15)'
 ))
 
 # Projection
@@ -1439,7 +1471,7 @@ else:
     y_axis_config = dict(
         range=[0, cap_final * 1000 * 1.1],
         title="",
-        showgrid=True,
+        showgrid=False,
         side="left",
         tickformat=",",
         ticksuffix=" €", 
