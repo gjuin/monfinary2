@@ -370,11 +370,11 @@ def get_all_data():
     # Nettoyage des dates
     df_long_valo['Date'] = pd.to_datetime(df_long_valo['Date'], dayfirst=True, errors='coerce')
     df_long_valo['Date'] = df_long_valo['Date'].dt.date # convertir en date pure yyyy-mm-dd
-    df_long_valo = df_long_valo[df_long_valo['Date'] <  pd.Timestamp.now().date()]
+    df_long_valo = df_long_valo[df_long_valo['Date'] <=  pd.Timestamp.now().date()]
 
     df_long_vers['Date'] = pd.to_datetime(df_long_vers['Date'], dayfirst=True, errors='coerce')
     df_long_vers['Date'] = df_long_vers['Date'].dt.date # convertir en date pure yyyy-mm-dd
-    df_long_vers = df_long_vers[df_long_vers['Date'] <  pd.Timestamp.now().date()]
+    df_long_vers = df_long_vers[df_long_vers['Date'] <=  pd.Timestamp.now().date()]
 
     # On retire les espaces dans les nombres et on convertit en numérique
     df_long_valo['Valeur'] = (
