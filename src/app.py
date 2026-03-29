@@ -225,7 +225,7 @@ def show_help_quadrants():
         **⚡ Nord-Ouest : Bust Inflationiste**
         *Stagflation, hausse des coûts.*
         * La croissance chute alors que l'inflation reste haute (choc d'offre). Les banques centrales sont bloquées : monter les taux tue la croissance, les baisser nourrit l'inflation.
-        * **Actifs :** Or, Cash, Obligations Courtes, Actions Défensives (Agro, Santé)
+        * **Actifs :** Or, Cash, Obligations Courtes, Actions Défensives (Agro, Santé, Utilities)
         
         **🌊 Sud-Ouest : Bust Déflationiste**
         *Récession classique, déflation.*
@@ -831,9 +831,9 @@ df_radar = df_radar[~((df_radar['Dimension'] == 'Secteur') &
 df_radar['Valo_Ponderee'] = df_radar['Valeur'] * df_radar['Pourcentage'] # un produit peut être doublé voir triplé car ventilé par dimension
 
 # Définir une règle de gestion sur le poids des dimensions
-df_nb_dim = df_radar.groupby(['Plateforme', 'Produit'])['Dimension'].nunique().reset_index(name='nb_dim')
+df_nb_dim = df_radar.groupby(['Portefeuille', 'Produit'])['Dimension'].nunique().reset_index(name='nb_dim')
 
-df_radar = pd.merge(df_radar, df_nb_dim, on= ['Plateforme', 'Produit'] )
+df_radar = pd.merge(df_radar, df_nb_dim, on= ['Portefeuille', 'Produit'] )
 
 def attribuer_poids(row):
     d = row['Dimension']
@@ -858,7 +858,7 @@ df_radar['poids_dimension'] = df_radar.apply(attribuer_poids, axis=1)
 
 # calcul du score par produit et dimension
 scenarios = df_scenar.columns[2:12]
-df_prod = df_radar[['Produit', 'Dimension', 'Sous-Catégorie', 'Portefeuille', 'Plateforme', 'Valeur', 'Valo_Ponderee','nb_dim']].copy()
+df_prod = df_radar[['Produit', 'Dimension', 'Sous-Catégorie', 'Portefeuille', 'Valeur', 'Valo_Ponderee','nb_dim']].copy()
 for scenario in scenarios:
     df_prod[scenario] = (
         df_radar['Pourcentage'] * df_radar['poids_dimension'] * df_radar[scenario]
@@ -871,7 +871,7 @@ df_prod['Valo_Ventilee'] = df_prod['Valo_Ponderee'] / df_prod['nb_dim']
 
 # calcul du score par produit
 cols_to_sum = list(scenarios) + ['Valo_Ventilee']
-df_prod_agg = df_prod.groupby(['Produit', 'Portefeuille', 'Plateforme'], as_index=False)[cols_to_sum].sum()
+df_prod_agg = df_prod.groupby(['Produit', 'Portefeuille'], as_index=False)[cols_to_sum].sum()
 
 
 # calcul du score sur la sélection
