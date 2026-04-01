@@ -1108,7 +1108,8 @@ portefeuilles_correl = pd.unique(df_valo_correl['Portefeuille'])
 # la matrice
 corr_matrix = df_perf_correl.corr().fillna(0)
 #mask = np.triu(np.ones(corr_matrix.shape), k=1).astype(bool) # on prépare un mask pour retirer la moitié nord-est
-np.fill_diagonal(corr_matrix.values, np.nan)
+for i in range(len(corr_matrix)):
+    corr_matrix.iloc[i, i] = np.nan
 #corr_matrix = corr_matrix.where(~mask)
 text_values = corr_matrix.round(1).astype(str).replace('nan', '')
 
