@@ -338,7 +338,7 @@ def show_help_quadrants():
 
 
 ##### 1. Connexion 
-#gsheet_url = st.secrets["gsheet"]["url"]
+url = st.secrets["gsheet"]["url"]
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 
