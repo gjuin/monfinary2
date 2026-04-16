@@ -15,6 +15,36 @@ st.set_page_config(layout="wide")
 # fond d'écran de l'app :)
 img_url = "https://raw.githubusercontent.com/gjuin/monfinary2/342da2d2bb2fde053acc12f25a9b80c35bbedfd2/pic/Gemini_Generated_Image_5523w75523w75523.png"
 
+
+# lecture Github / Streamlit
+
+# ✅ Vérification du secret
+if "github" not in st.secrets or "token" not in st.secrets["github"]:
+    st.error("Secret GitHub manquant (github.token)")
+    st.stop()
+
+token = st.secrets["github"]["token"]
+
+REPO_DIR = "repo_prive"
+
+# ✅ Clone UNE seule fois
+if not os.path.exists(REPO_DIR):
+    repo_url = f"https://{token}:x-oauth-basic@github.com/ORG/REPO.git"
+    result = subprocess.run(
+        ["git", "clone", repo_url, REPO_DIR],
+        capture_output=True,
+        text=True
+    )
+
+    if result.returncode != 0:
+        st.error("Erreur lors du clone du repo GitHub")
+        st.code(result.stderr)
+        st.stop()
+
+# ✅ Import après clone
+sys.path.append(REPO_DIR)
+
+# Ecran
 def add_bg_from_url():
     st.markdown(
         f"""
